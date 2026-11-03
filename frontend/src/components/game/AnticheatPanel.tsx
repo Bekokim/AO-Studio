@@ -14,10 +14,15 @@ const POLL_MS = 2000
  * Опрашивает сервер: нарушения команд, дисквалификации и обрывы связи с устройствами.
  * Флаги уходят в стор игры — там заморожены баллы дисквалифицированных, а табло
  * показывает их вне зачёта. Ведущий может простить команду и вернуть её в игру.
+ *
+ * В игре с доски это же устройство показывает игру всем, и режим проектора прячет
+ * элементы ведущего — поэтому там панель остаётся на экране: иначе снять дисквалификацию
+ * было бы неоткуда.
  */
 export default function AnticheatPanel() {
   const sessionId = useGame((s) => s.sessionId)
   const enabled = useGame((s) => s.mode === 'online' && s.anticheat)
+  const board = useGame((s) => s.board)
   const setTeamFlags = useGame((s) => s.setTeamFlags)
 
   const [status, setStatus] = useState<AnticheatStatus | null>(null)
@@ -117,8 +122,9 @@ export default function AnticheatPanel() {
         )}
       </AnimatePresence>
 
-      {/* Кнопка и список нарушений — скрыты в режиме проектора */}
-      <div className="host-only fixed bottom-4 left-4 z-40">
+      {/* Кнопка и список нарушений. В режиме проектора скрыты — но не в игре с доски:
+          там это единственное устройство ведущего */}
+      <div className={`fixed bottom-4 left-4 z-40 ${board ? '' : 'host-only'}`}>
         <AnimatePresence>
           {open && (
             <motion.div
@@ -138,6 +144,7 @@ export default function AnticheatPanel() {
 
               <p className="text-xs text-muted">
                 Прощается нарушений: {status.warnings_allowed}. Дальше команда вне зачёта, её баллы заморожены.
+                Дисквалификацию можно снять — команда вернётся в игру с обнулёнными предупреждениями.
               </p>
 
               {dq.length > 0 && (

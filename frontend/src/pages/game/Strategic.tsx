@@ -11,7 +11,7 @@ import { useLiveAnswers, usePublishState } from '../../hooks/useLive'
 import { checkAnswer } from '../../lib/answers'
 import { sounds } from '../../lib/sounds'
 import type { LiveState, Question } from '../../lib/types'
-import { nextRandomTeam } from '../../lib/utils'
+import { nextTeamIndex } from '../../lib/utils'
 import { useGame } from '../../store/game'
 
 interface Outcome {
@@ -60,6 +60,14 @@ export default function Strategic() {
     setRunning(true)
   }, [openId])
 
+  // Команду дисквалифицировали на её же ходу — выбирать она не может, передаём ход дальше
+  useEffect(() => {
+    if (!current && active?.disqualified && teams.some((t) => !t.disqualified)) {
+      setActiveIdx(nextTeamIndex(teams, activeIdx))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id, active?.disqualified, current])
+
   const end = async () => {
     await finish()
     navigate('/game/results')
@@ -80,7 +88,7 @@ export default function Strategic() {
     const next = { ...results, [current.id]: { teamId: active.id, correct } }
     setResults(next)
     setOpenId(null)
-    setActiveIdx(nextRandomTeam(teams.length, activeIdx))
+    setActiveIdx(nextTeamIndex(teams, activeIdx))
     if (Object.keys(next).length >= total) setTimeout(() => void end(), 1200)
   }
 
@@ -210,9 +218,12 @@ export default function Strategic() {
                 style={{ borderColor: active.color, background: `${active.color}1f` }}
               >
                 <Crown className="text-yellow-400" fill="currentColor" size={22} />
-                Ход команды: <span style={{ color: active.color }}>{active.name}</span>
+                Ход команды:{' '}
+                <span style={{ color: active.color }}>
+                  №{activeIdx % Math.max(1, teams.length) + 1} {active.name}
+                </span>
                 <button
-                  onClick={() => setActiveIdx(nextRandomTeam(teams.length, activeIdx))}
+                  onClick={() => setActiveIdx(nextTeamIndex(teams, activeIdx))}
                   className="host-only ml-2 rounded-lg p-1.5 text-muted hover:bg-fg/10 hover:text-fg"
                   title="Передать ход следующей команде"
                 >

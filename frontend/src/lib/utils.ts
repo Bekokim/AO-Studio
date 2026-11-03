@@ -69,12 +69,19 @@ export function uid(): string {
 }
 
 /**
- * Следующая команда ходит в случайном порядке (стратегический формат и рандом).
- * Две команды подряд один и тот же ход не получают, если команд больше одной.
+ * Следующая команда по очереди (стратегический формат и рандом).
+ *
+ * Ход идёт строго по нумерации команд: 1 → 2 → … → последняя → снова 1. Порядок команд —
+ * тот, в котором они подключились, его видно в лобби и на табло. Дисквалифицированные
+ * пропускаются: отвечать и выбирать вопрос им всё равно нельзя.
  */
-export function nextRandomTeam(count: number, current: number): number {
+export function nextTeamIndex(teams: { disqualified?: boolean }[], current: number): number {
+  const count = teams.length
   if (count <= 1) return 0
-  let next = current
-  while (next === current) next = Math.floor(Math.random() * count)
-  return next
+  for (let step = 1; step <= count; step++) {
+    const next = (current + step) % count
+    if (!teams[next]?.disqualified) return next
+  }
+  // Все команды вне зачёта — просто передаём ход дальше по кругу
+  return (current + 1) % count
 }

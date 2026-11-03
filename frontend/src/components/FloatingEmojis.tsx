@@ -13,8 +13,42 @@ function rng(seed: number) {
   }
 }
 
+/**
+ * Эмодзи, отрисованные в картинку один раз на весь сеанс.
+ *
+ * Цветные эмодзи — самые дорогие глифы в шрифте: браузер растрирует их заново при каждой
+ * перерисовке фона. Смена темы меняет переменные на `:root` и обязывает перерисовать всё
+ * дерево — с живым текстом это стоило ~0,5 с на кадр (десятки эмодзи крупным кеглем).
+ * Картинка же декодируется один раз, а дальше просто копируется, и смена темы идёт быстро.
+ */
+const SPRITE_PX = 128
+const spriteCache = new Map<string, string | null>()
+
+function emojiSprite(emoji: string): string | null {
+  const cached = spriteCache.get(emoji)
+  if (cached !== undefined) return cached
+  let url: string | null = null
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = SPRITE_PX
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.font = `${Math.round(SPRITE_PX * 0.8)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(emoji, SPRITE_PX / 2, SPRITE_PX / 2 + SPRITE_PX * 0.04)
+      url = canvas.toDataURL('image/png')
+    }
+  } catch {
+    // Canvas недоступен (тесты, экзотический браузер) — ниже отрисуем сам символ
+  }
+  spriteCache.set(emoji, url)
+  return url
+}
+
 interface Item {
   emoji: string
+  sprite: string | null
   left: number
   top: number
   size: number
@@ -48,6 +82,7 @@ export default function FloatingEmojis() {
         }
         return {
           emoji,
+          sprite: emojiSprite(emoji),
           left,
           top,
           size: 22 + d * d * 150,
@@ -116,7 +151,11 @@ export default function FloatingEmojis() {
             } as CSSProperties
           }
         >
-          {it.emoji}
+          {it.sprite ? (
+            <img src={it.sprite} alt="" draggable={false} style={{ width: it.size, height: it.size, display: 'block' }} />
+          ) : (
+            it.emoji
+          )}
         </span>
       ))}
     </div>

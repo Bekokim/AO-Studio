@@ -13,7 +13,17 @@ interface GameState {
   code: string | null
   /** Античит (онлайн): устройства команд держат игру в полном экране */
   anticheat: boolean
-  start: (sessionId: number, room: RoomDetail, teams: Team[], mode?: GameMode, code?: string | null, anticheat?: boolean) => void
+  /** Игра запущена с умной доски — это же устройство и есть экран для всех */
+  board: boolean
+  start: (
+    sessionId: number,
+    room: RoomDetail,
+    teams: Team[],
+    mode?: GameMode,
+    code?: string | null,
+    anticheat?: boolean,
+    board?: boolean,
+  ) => void
   setTeams: (teams: Team[]) => void
   /** Обновить флаги античита у команд (опрос ведущего), не затирая баллы */
   setTeamFlags: (flags: { id: number; warnings: number; disqualified: boolean; dq_reason: string }[]) => void
@@ -33,9 +43,10 @@ export const useGame = create<GameState>()(
       mode: 'offline',
       code: null,
       anticheat: false,
+      board: false,
 
-      start(sessionId, room, teams, mode = 'offline', code = null, anticheat = false) {
-        set({ sessionId, room, teams, finished: false, mode, code, anticheat })
+      start(sessionId, room, teams, mode = 'offline', code = null, anticheat = false, board = false) {
+        set({ sessionId, room, teams, finished: false, mode, code, anticheat, board })
       },
 
       setTeams(teams) {
@@ -68,7 +79,16 @@ export const useGame = create<GameState>()(
       },
 
       reset() {
-        set({ sessionId: null, room: null, teams: [], finished: false, mode: 'offline', code: null, anticheat: false })
+        set({
+          sessionId: null,
+          room: null,
+          teams: [],
+          finished: false,
+          mode: 'offline',
+          code: null,
+          anticheat: false,
+          board: false,
+        })
       },
     }),
     { name: 'ao_game', storage: createJSONStorage(() => sessionStorage) },

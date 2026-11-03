@@ -11,7 +11,7 @@ import { useLiveAnswers, usePublishState } from '../../hooks/useLive'
 import { checkAnswer } from '../../lib/answers'
 import { sounds } from '../../lib/sounds'
 import type { LiveState } from '../../lib/types'
-import { nextRandomTeam, shuffle } from '../../lib/utils'
+import { nextTeamIndex, shuffle } from '../../lib/utils'
 import { useGame } from '../../store/game'
 
 interface Outcome {
@@ -53,7 +53,13 @@ export default function Random() {
     navigate('/game/results')
   }
 
-  const nextTeam = () => setActiveIdx(nextRandomTeam(teams.length, activeIdx))
+  const nextTeam = () => setActiveIdx(nextTeamIndex(teams, activeIdx))
+
+  // Команду дисквалифицировали на её же ходу — выбирать она не может, передаём ход дальше
+  useEffect(() => {
+    if (openId == null && active?.disqualified && teams.some((t) => !t.disqualified)) nextTeam()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id, active?.disqualified, openId])
 
   const revealQuestion = () => {
     setStage('question')
@@ -209,8 +215,11 @@ export default function Random() {
                 style={{ borderColor: active.color, background: `${active.color}1f` }}
               >
                 <Crown className="text-yellow-400" fill="currentColor" size={22} />
-                Выбирает: <span style={{ color: active.color }}>{active.name}</span>
-                <button onClick={nextTeam} className="host-only ml-2 rounded-lg p-1.5 text-muted hover:bg-fg/10 hover:text-fg" title="Передать ход">
+                Выбирает:{' '}
+                <span style={{ color: active.color }}>
+                  №{activeIdx % Math.max(1, teams.length) + 1} {active.name}
+                </span>
+                <button onClick={nextTeam} className="host-only ml-2 rounded-lg p-1.5 text-muted hover:bg-fg/10 hover:text-fg" title="Передать ход следующей команде">
                   <SkipForward size={18} />
                 </button>
               </motion.div>

@@ -181,7 +181,7 @@ export default function Lobby() {
                 </div>
               ) : (
                 <AnimatePresence initial={false}>
-                  {teams.map((t) => (
+                  {teams.map((t, i) => (
                     <motion.div
                       key={t.id}
                       layout
@@ -190,6 +190,8 @@ export default function Lobby() {
                       exit={{ opacity: 0, x: 20 }}
                       className="flex items-center gap-3 rounded-xl border border-line bg-fg/[0.03] p-3"
                     >
+                      {/* Номер — он же очередь хода: команды ходят строго по этому порядку */}
+                      <span className="w-5 shrink-0 text-center text-sm font-bold text-muted tabular-nums">{i + 1}</span>
                       <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: t.color, boxShadow: `0 0 10px ${t.color}` }} />
                       <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
                       <button onClick={() => kick(t.id)} className="rounded-lg p-1.5 text-muted hover:bg-red-400/10 hover:text-red-400" title="Убрать команду">
@@ -206,7 +208,10 @@ export default function Lobby() {
             <button onClick={begin} disabled={starting || !teams.length} className="btn btn-primary mt-5 w-full py-4 text-base">
               {starting ? <Loader2 size={20} className="animate-spin" /> : <Rocket size={20} />} Начать игру
             </button>
-            <p className="mt-2 text-center text-xs text-muted">После старта новые команды подключиться не смогут</p>
+            <p className="mt-2 text-center text-xs text-muted">
+              Ход пойдёт по номерам — от первой команды к последней и снова по кругу. После старта новые команды
+              подключиться не смогут
+            </p>
           </motion.section>
         </div>
       </div>

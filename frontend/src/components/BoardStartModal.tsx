@@ -154,6 +154,7 @@ export default function BoardStartModal() {
         'online',
         session.code,
         session.anticheat,
+        session.board,
       )
       Object.keys(sessionStorage)
         .filter((k) => k.startsWith('ao_progress'))
