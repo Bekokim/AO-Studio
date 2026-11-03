@@ -13,12 +13,16 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Answer, GameSession, Team, Violation
+from .models import Answer, GameSession, Participant, Team, Violation
 
 MAX_TEAMS = 40
+# Сколько участников может быть в команде
+MAX_TEAM_SIZE = 20
 
-# Античит: сколько нарушений прощается, прежде чем дисквалифицировать
+# Античит: сколько нарушений прощается, прежде чем дисквалифицировать участника
 WARNINGS_ALLOWED = 1
+# Сколько участников должно вылететь, чтобы из игры выбыла вся команда
+PARTICIPANTS_DQ_ALLOWED = 2
 # Два события от одного ухода с экрана (blur + hidden) не должны стоить двух нарушений
 VIOLATION_COOLDOWN = 5  # секунд
 VIOLATION_LABELS = dict(Violation.KINDS)
@@ -62,16 +66,52 @@ def timer_payload(session: GameSession):
     return None
 
 
-def team_from_request(request, session):
+def request_token(request):
     # sendBeacon (уход со страницы) не умеет слать заголовки — там токен приходит в теле
-    token = request.headers.get("X-Team-Token", "") or str(request.data.get("token", ""))
+    return request.headers.get("X-Team-Token", "") or str(request.data.get("token", ""))
+
+
+def participant_from_request(request, session):
+    """Участник, с чьего устройства пришёл запрос."""
+    token = request_token(request)
     if not token:
         return None
-    return session.teams.filter(token=token).first()
+    return (
+        Participant.objects.filter(team__session=session, token=token)
+        .select_related("team")
+        .first()
+    )
 
 
-def public_payload(session: GameSession, team: Team | None = None):
+def team_payload(team: Team, *, with_participants=True):
+    data = {
+        "id": team.id,
+        "name": team.name,
+        "color": team.color,
+        "score": team.score,
+        "disqualified": team.disqualified,
+        "size": team.size,
+        "answerer_id": team.answerer_id,
+        "ready": team.ready,
+    }
+    if with_participants:
+        data["participants"] = [
+            {
+                "id": p.id,
+                "name": p.name,
+                "is_captain": p.is_captain,
+                "is_answerer": team.answerer_id == p.id,
+                "disqualified": p.disqualified,
+                "warnings": p.warnings,
+            }
+            for p in team.participants.all()
+        ]
+    return data
+
+
+def public_payload(session: GameSession, participant: Participant | None = None):
     state = session.state or {}
+    teams = session.teams.prefetch_related("participants")
     payload = {
         "code": session.code,
         "mode": session.mode,
@@ -81,34 +121,32 @@ def public_payload(session: GameSession, team: Team | None = None):
         "version": session.state_version,
         "timer": timer_payload(session),
         "server_time": timezone.now().isoformat(),
-        "teams": [
-            {
-                "id": t.id,
-                "name": t.name,
-                "color": t.color,
-                "score": t.score,
-                "disqualified": t.disqualified,
-            }
-            for t in session.teams.all()
-        ],
+        "teams": [team_payload(t) for t in teams],
         "anticheat": session.anticheat and session.mode == GameSession.MODE_ONLINE,
         "warnings_allowed": WARNINGS_ALLOWED,
+        "participants_dq_allowed": PARTICIPANTS_DQ_ALLOWED,
+        "max_team_size": MAX_TEAM_SIZE,
         # Сбор команд: сколько ждём и сколько игроков в команде (0 — не задано)
         "expected_teams": session.expected_teams,
         "team_size": session.team_size,
+        # Кто смотрит: участник и его команда
         "me": None,
+        "my_team": None,
         "my_answer": None,
     }
-    if team:
+    if participant:
+        team = participant.team
         payload["me"] = {
-            "id": team.id,
-            "name": team.name,
-            "color": team.color,
-            "score": team.score,
-            "disqualified": team.disqualified,
-            "warnings": team.warnings,
-            "dq_reason": team.dq_reason,
+            "id": participant.id,
+            "name": participant.name,
+            "is_captain": participant.is_captain,
+            "is_answerer": team.answerer_id == participant.id,
+            "disqualified": participant.disqualified,
+            "warnings": participant.warnings,
+            "dq_reason": participant.dq_reason,
+            "team_id": team.id,
         }
+        payload["my_team"] = team_payload(team)
         qid = (state.get("question") or {}).get("id")
         if qid:
             ans = Answer.objects.filter(team=team, question_id=qid).first()
@@ -130,58 +168,169 @@ class LiveBase(APIView):
 class LiveStateView(LiveBase):
     def get(self, request, code):
         session = self.get_session(code)
-        team = team_from_request(request, session)
-        if team:
-            # Отметка связи — ведущий видит, что устройство команды на месте (пишем не чаще раза в 5 с)
+        me = participant_from_request(request, session)
+        if me:
+            # Отметка связи — ведущий видит, что устройство на месте (пишем не чаще раза в 5 с)
             now = timezone.now()
-            if not team.last_seen or (now - team.last_seen).total_seconds() > 5:
-                Team.objects.filter(pk=team.pk).update(last_seen=now)
-        return Response(public_payload(session, team))
+            if not me.last_seen or (now - me.last_seen).total_seconds() > 5:
+                Participant.objects.filter(pk=me.pk).update(last_seen=now)
+                Team.objects.filter(pk=me.team_id).update(last_seen=now)
+        return Response(public_payload(session, me))
+
+
+def maybe_autostart(session: GameSession):
+    """Все команды собрались и назначили отвечающего — начинаем, ведущему жать нечего."""
+    if not session.autostart or session.status != GameSession.STATUS_LOBBY:
+        return
+    teams = list(session.teams.all())
+    if session.expected_teams and len(teams) < session.expected_teams:
+        return
+    if not teams or not all(t.ready for t in teams):
+        return
+    session.status = GameSession.STATUS_ACTIVE
+    session.state = {"view": "waiting"}
+    session.state_version += 1
+    session.save(update_fields=["status", "state", "state_version"])
 
 
 class LiveJoinView(LiveBase):
+    """Вход участника.
+
+    Капитан создаёт команду: присылает своё имя, название команды и число участников.
+    Остальные присылают имя и `team_id` — выбирают команду из уже созданных.
+    """
+
     def post(self, request, code):
         session = self.get_session(code)
-        # Повторный вход с того же устройства — возвращаем ту же команду
-        existing = team_from_request(request, session)
+        # Повторный вход с того же устройства — возвращаем того же участника
+        existing = participant_from_request(request, session)
         if existing:
             return Response({"token": existing.token, **public_payload(session, existing)})
 
         if session.status != GameSession.STATUS_LOBBY:
             return Response({"detail": "Игра уже началась — присоединиться нельзя."}, status=status.HTTP_400_BAD_REQUEST)
+
         name = str(request.data.get("name", "")).strip()[:40]
         if len(name) < 2:
-            return Response({"detail": "Введите название команды (минимум 2 символа)."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Введите своё имя (минимум 2 символа)."}, status=status.HTTP_400_BAD_REQUEST)
+
+        team_id = request.data.get("team_id")
         with transaction.atomic():
-            teams = list(session.teams.select_for_update())
-            limit = min(session.expected_teams or MAX_TEAMS, MAX_TEAMS)
-            if len(teams) >= limit:
-                return Response(
-                    {"detail": "Все места заняты — ведущий ждёт именно столько команд."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if any(t.name.lower() == name.lower() for t in teams):
-                return Response({"detail": "Команда с таким названием уже есть."}, status=status.HTTP_400_BAD_REQUEST)
-            used = {t.color for t in teams}
-            color = next((c for c in TEAM_COLORS if c not in used), TEAM_COLORS[len(teams) % len(TEAM_COLORS)])
-            team = Team.objects.create(session=session, name=name, color=color, token=Team.new_token())
-            # Собрались все ожидаемые команды — начинаем сами, ведущему ничего нажимать не нужно
-            if session.autostart and session.expected_teams and len(teams) + 1 >= session.expected_teams:
-                session.status = GameSession.STATUS_ACTIVE
-                session.state = {"view": "waiting"}
-                session.state_version += 1
-                session.save(update_fields=["status", "state", "state_version"])
-        return Response({"token": team.token, **public_payload(session, team)}, status=status.HTTP_201_CREATED)
+            if team_id:
+                me = self._join_team(session, team_id, name)
+            else:
+                me = self._create_team(request, session, name)
+            if isinstance(me, Response):
+                return me
+            maybe_autostart(session)
+
+        session.refresh_from_db()
+        return Response({"token": me.token, **public_payload(session, me)}, status=status.HTTP_201_CREATED)
+
+    def _join_team(self, session, team_id, name):
+        """Участник выбирает команду, которую уже завёл её капитан."""
+        team = session.teams.select_for_update().filter(pk=team_id).first()
+        if not team:
+            return Response({"detail": "Команда не найдена."}, status=status.HTTP_400_BAD_REQUEST)
+        mates = list(team.participants.all())
+        if team.size and len(mates) >= team.size:
+            return Response(
+                {"detail": f"В команде «{team.name}» мест больше нет — капитан заявил {team.size}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if any(p.name.lower() == name.lower() for p in mates):
+            return Response(
+                {"detail": "В этой команде уже есть участник с таким именем."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Participant.objects.create(team=team, name=name, token=Participant.new_token())
+
+    def _create_team(self, request, session, captain_name):
+        """Капитан заводит команду: название, состав и он сам первым участником."""
+        team_name = str(request.data.get("team_name", "")).strip()[:40]
+        if len(team_name) < 2:
+            return Response(
+                {"detail": "Введите название команды (минимум 2 символа)."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Ведущий мог задать размер команды при запуске — тогда это потолок
+        limit_size = min(session.team_size or MAX_TEAM_SIZE, MAX_TEAM_SIZE)
+        try:
+            size = int(request.data.get("size", 0))
+        except (TypeError, ValueError):
+            size = 0
+        if size < 1 or size > limit_size:
+            return Response(
+                {"detail": f"Сколько вас в команде? Число от 1 до {limit_size}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        teams = list(session.teams.select_for_update())
+        limit = min(session.expected_teams or MAX_TEAMS, MAX_TEAMS)
+        if len(teams) >= limit:
+            return Response(
+                {"detail": "Все места заняты — ведущий ждёт именно столько команд."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if any(t.name.lower() == team_name.lower() for t in teams):
+            return Response({"detail": "Команда с таким названием уже есть."}, status=status.HTTP_400_BAD_REQUEST)
+
+        used = {t.color for t in teams}
+        color = next((c for c in TEAM_COLORS if c not in used), TEAM_COLORS[len(teams) % len(TEAM_COLORS)])
+        team = Team.objects.create(session=session, name=team_name, color=color, size=size)
+        return Participant.objects.create(
+            team=team, name=captain_name, token=Participant.new_token(), is_captain=True
+        )
+
+
+class LiveAnswererView(LiveBase):
+    """Капитан назначает участника, который пишет ответы за команду.
+
+    До старта это и есть готовность команды. В идущей игре менять можно между вопросами:
+    пока вопрос открыт, подмена отвечающего была бы способом тянуть время.
+    """
+
+    def post(self, request, code):
+        session = self.get_session(code)
+        me = participant_from_request(request, session)
+        if not me:
+            return Response({"detail": "Сначала присоединитесь к игре."}, status=status.HTTP_403_FORBIDDEN)
+        if not me.is_captain:
+            return Response({"detail": "Отвечающего назначает капитан."}, status=status.HTTP_403_FORBIDDEN)
+        if session.status == GameSession.STATUS_ACTIVE and (session.state or {}).get("view") == "question":
+            return Response(
+                {"detail": "Вопрос уже открыт — поменять отвечающего можно будет до следующего."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        team = me.team
+        target = team.participants.filter(pk=request.data.get("participant_id")).first()
+        if not target:
+            return Response({"detail": "Участник не найден."}, status=status.HTTP_400_BAD_REQUEST)
+        if target.disqualified:
+            return Response(
+                {"detail": "Этот участник вне зачёта — выберите другого."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        team.answerer = target
+        team.save(update_fields=["answerer"])
+        maybe_autostart(session)
+        session.refresh_from_db()
+        return Response(public_payload(session, me))
 
 
 class LiveAnswerView(LiveBase):
     def post(self, request, code):
         session = self.get_session(code)
-        team = team_from_request(request, session)
-        if not team:
+        me = participant_from_request(request, session)
+        if not me:
             return Response({"detail": "Сначала присоединитесь к игре."}, status=status.HTTP_403_FORBIDDEN)
+        team = me.team
         if team.disqualified:
             return Response({"detail": "Команда дисквалифицирована."}, status=status.HTTP_403_FORBIDDEN)
+        if me.disqualified:
+            return Response({"detail": "Вы вне зачёта."}, status=status.HTTP_403_FORBIDDEN)
+        if team.answerer_id != me.id:
+            return Response({"detail": "За команду отвечает другой участник."}, status=status.HTTP_403_FORBIDDEN)
         state = session.state or {}
         question = state.get("question") or {}
         qid = request.data.get("question_id")
@@ -207,15 +356,18 @@ class LiveAnswerView(LiveBase):
 
 
 class LivePickView(LiveBase):
-    """Команда, чей ход, выбирает клетку (стратегический) или карточку (слепой) со своего устройства."""
+    """Отвечающий выбирает клетку (стратегический) или карточку (слепой) со своего устройства."""
 
     def post(self, request, code):
         session = self.get_session(code)
-        team = team_from_request(request, session)
-        if not team:
+        me = participant_from_request(request, session)
+        if not me:
             return Response({"detail": "Сначала присоединитесь к игре."}, status=status.HTTP_403_FORBIDDEN)
-        if team.disqualified:
-            return Response({"detail": "Команда дисквалифицирована."}, status=status.HTTP_403_FORBIDDEN)
+        team = me.team
+        if team.disqualified or me.disqualified:
+            return Response({"detail": "Вы вне зачёта."}, status=status.HTTP_403_FORBIDDEN)
+        if team.answerer_id != me.id:
+            return Response({"detail": "Вопрос выбирает отвечающий."}, status=status.HTTP_403_FORBIDDEN)
         state = session.state or {}
         if session.status != GameSession.STATUS_ACTIVE or state.get("view") not in ("grid", "tiles"):
             return Response({"detail": "Сейчас выбирать нельзя."}, status=status.HTTP_400_BAD_REQUEST)
@@ -229,59 +381,82 @@ class LivePickView(LiveBase):
         return Response({"ok": True})
 
 
-class LiveViolationView(LiveBase):
-    """Устройство команды сообщает, что игра ушла с экрана (свернули, переключили вкладку, вышли из полного экрана).
+def disqualify_participant(participant: Participant, reason: str):
+    """Участник вне зачёта. Двое выбывших — и команда целиком выбывает из игры."""
+    participant.disqualified = True
+    participant.dq_reason = reason
+    participant.dq_at = timezone.now()
+    participant.save(update_fields=["disqualified", "dq_reason", "dq_at"])
 
-    Первые нарушения — предупреждение, дальше команда дисквалифицируется:
-    ответы и выбор клеток больше не принимаются, баллы замораживаются.
-    Ведущий может простить команду и вернуть её в игру.
+    team = participant.team
+    mates = list(team.participants.all())
+    # Отвечающий выбыл — команда без ответов, пока капитан не назначит другого
+    if team.answerer_id == participant.id:
+        team.answerer = None
+        team.save(update_fields=["answerer"])
+    # Выбыл капитан — права переходят первому, кто остался в зачёте
+    if participant.is_captain:
+        heir = next((p for p in mates if not p.disqualified and p.id != participant.id), None)
+        if heir:
+            Participant.objects.filter(pk=participant.pk).update(is_captain=False)
+            Participant.objects.filter(pk=heir.pk).update(is_captain=True)
+
+    out = sum(1 for p in mates if p.disqualified or p.id == participant.id)
+    if out >= PARTICIPANTS_DQ_ALLOWED and not team.disqualified:
+        team.disqualified = True
+        team.dq_reason = f"Вне зачёта участников: {out}"
+        team.dq_at = timezone.now()
+        team.save(update_fields=["disqualified", "dq_reason", "dq_at"])
+    return team
+
+
+class LiveViolationView(LiveBase):
+    """Устройство участника сообщает, что игра ушла с экрана.
+
+    Считается каждому лично: первое нарушение — предупреждение, следующее — участник вне
+    зачёта. Когда вне зачёта оказываются двое, из игры выбывает вся команда.
     """
 
     def post(self, request, code):
         session = self.get_session(code)
-        team = team_from_request(request, session)
-        if not team:
+        me = participant_from_request(request, session)
+        if not me:
             return Response({"detail": "Сначала присоединитесь к игре."}, status=status.HTTP_403_FORBIDDEN)
 
         kind = request.data.get("kind")
         if kind not in VIOLATION_LABELS:
             return Response({"detail": "Неизвестный тип нарушения."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Античит работает только в идущей игре: в лобби и на итогах телефон свободен
-        inactive = not session.anticheat or session.status != GameSession.STATUS_ACTIVE
-        if inactive or team.disqualified:
+        def snapshot(counted):
+            me.refresh_from_db()
+            team = Team.objects.get(pk=me.team_id)
             return Response({
-                "counted": False,
-                "warnings": team.warnings,
-                "disqualified": team.disqualified,
-                "dq_reason": team.dq_reason,
+                "counted": counted,
+                "warnings": me.warnings,
+                "warnings_allowed": WARNINGS_ALLOWED,
+                "disqualified": me.disqualified,
+                "dq_reason": me.dq_reason,
+                "team_disqualified": team.disqualified,
+                "team_dq_reason": team.dq_reason,
             })
 
+        # Античит работает только в идущей игре: в лобби и на итогах телефон свободен
+        inactive = not session.anticheat or session.status != GameSession.STATUS_ACTIVE
+        if inactive or me.disqualified or me.team.disqualified:
+            return snapshot(False)
+
         with transaction.atomic():
-            team = Team.objects.select_for_update().get(pk=team.pk)
-            recent = team.violations.first()
+            me = Participant.objects.select_for_update().select_related("team").get(pk=me.pk)
+            recent = me.violations.first()
             if recent and (timezone.now() - recent.at).total_seconds() < VIOLATION_COOLDOWN:
                 # Один и тот же уход с экрана — не наказываем дважды
-                return Response({
-                    "counted": False,
-                    "warnings": team.warnings,
-                    "disqualified": team.disqualified,
-                    "dq_reason": team.dq_reason,
-                })
+                return snapshot(False)
 
-            team.warnings += 1
-            fatal = team.warnings > WARNINGS_ALLOWED
+            me.warnings += 1
+            fatal = me.warnings > WARNINGS_ALLOWED
+            me.save(update_fields=["warnings"])
             if fatal:
-                team.disqualified = True
-                team.dq_reason = VIOLATION_LABELS[kind]
-                team.dq_at = timezone.now()
-            team.save(update_fields=["warnings", "disqualified", "dq_reason", "dq_at"])
-            Violation.objects.create(session=session, team=team, kind=kind, fatal=fatal)
+                disqualify_participant(me, VIOLATION_LABELS[kind])
+            Violation.objects.create(session=session, team=me.team, participant=me, kind=kind, fatal=fatal)
 
-        return Response({
-            "counted": True,
-            "warnings": team.warnings,
-            "warnings_allowed": WARNINGS_ALLOWED,
-            "disqualified": team.disqualified,
-            "dq_reason": team.dq_reason,
-        })
+        return snapshot(True)

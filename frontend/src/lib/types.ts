@@ -61,6 +61,17 @@ export interface RoomDetail extends Omit<RoomListItem, 'categories'> {
   questions: Question[]
 }
 
+/** Участник команды — одно устройство. Отвечающий пишет ответы, остальные ждут с заглушкой */
+export interface Participant {
+  id: number
+  name: string
+  is_captain: boolean
+  is_answerer: boolean
+  disqualified?: boolean
+  warnings?: number
+  dq_reason?: string
+}
+
 export interface Team {
   id: number
   name: string
@@ -70,6 +81,14 @@ export interface Team {
   disqualified?: boolean
   warnings?: number
   dq_reason?: string
+  /** Сколько участников заявил капитан (0 — состав не задан) */
+  size?: number
+  /** Кто пишет ответы за команду */
+  answerer?: number | null
+  answerer_id?: number | null
+  /** Капитан назначил отвечающего — ведущий может начинать */
+  ready?: boolean
+  participants?: Participant[]
 }
 
 /** Что зафиксировал браузер устройства команды */
@@ -79,6 +98,9 @@ export interface Violation {
   id: number
   team_id: number
   team: string
+  /** Чьё устройство ушло с экрана. Пусто — игра, начатая до перехода на участников */
+  participant_id: number | null
+  participant: string
   kind: ViolationKind
   label: string
   /** Нарушение, за которое дисквалифицировали */
@@ -86,11 +108,27 @@ export interface Violation {
   at: string
 }
 
+export type AnticheatParticipant = Participant & {
+  warnings: number
+  disqualified: boolean
+  dq_reason: string
+  offline: boolean
+}
+
 /** Сводка античита для ведущего */
 export interface AnticheatStatus {
   anticheat: boolean
   warnings_allowed: number
-  teams: (Team & { warnings: number; disqualified: boolean; dq_reason: string; offline: boolean })[]
+  /** Сколько участников должно выбыть, чтобы сняли всю команду */
+  participants_dq_allowed: number
+  // participants перекрывает одноимённое поле Team, поэтому исходное исключаем
+  teams: (Omit<Team, 'participants'> & {
+    warnings: number
+    disqualified: boolean
+    dq_reason: string
+    offline: boolean
+    participants: AnticheatParticipant[]
+  })[]
   violations: Violation[]
 }
 
@@ -162,12 +200,19 @@ export interface LivePayload {
   timer: { left: number; running: boolean } | null
   server_time: string
   teams: Team[]
-  me: Team | null
+  /** Кто смотрит с этого устройства */
+  me: (Participant & { team_id: number }) | null
+  /** Команда смотрящего — со всем составом */
+  my_team: Team | null
   my_answer: string | null
-  /** Античит включён ведущим: устройство команды держит игру в полном экране */
+  /** Античит включён ведущим: устройство участника держит игру на экране */
   anticheat: boolean
-  /** Сколько нарушений прощается до дисквалификации */
+  /** Сколько нарушений прощается до дисквалификации участника */
   warnings_allowed: number
+  /** Сколько участников должно выбыть, чтобы сняли всю команду */
+  participants_dq_allowed: number
+  /** Потолок состава команды */
+  max_team_size: number
   /** Сколько команд ждёт ведущий (0 — без ограничения) */
   expected_teams: number
   /** Игроков в команде (0 — не задано) */

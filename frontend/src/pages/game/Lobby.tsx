@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Copy, Loader2, LogOut, Rocket, ShieldCheck, Sparkles, Users, X } from '../../lib/icons'
+import { Check, Copy, Crown, Loader2, LogOut, Pencil, Rocket, ShieldCheck, Sparkles, Users, X } from '../../lib/icons'
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -59,6 +59,9 @@ export default function Lobby() {
 
   const expected = session?.expected_teams ?? 0
   const teamSize = session?.team_size ?? 0
+  // Команда готова, когда её капитан назначил отвечающего
+  const ready = teams.filter((t) => t.ready).length
+  const allReady = teams.length > 0 && ready === teams.length
 
   const kick = async (teamId: number) => {
     setTeams(teams.filter((t) => t.id !== teamId))
@@ -129,9 +132,10 @@ export default function Lobby() {
                   <ShieldCheck size={16} /> Защита от списывания включена
                 </div>
                 <p className="mt-1.5 text-muted">
-                  Объявите командам правила: одно устройство на команду, игра раскрывается на весь экран. Свернуть игру
-                  или открыть другую вкладку — предупреждение, второй раз — <b className="text-fg">дисквалификация</b>.
-                  Нарушения вы увидите на игровом экране и сможете простить команду.
+                  Объявите правила: в игре телефон каждого участника, игра раскрывается на весь экран. Свернуть её
+                  или открыть другую вкладку — предупреждение, второй раз — участник{' '}
+                  <b className="text-fg">вне зачёта</b>. Двое выбывших — и команду снимают с игры. Нарушения вы
+                  увидите на игровом экране и сможете вернуть любого обратно.
                 </p>
               </div>
             )}
@@ -170,6 +174,9 @@ export default function Lobby() {
                   )}
                   {teamSize > 0 && <span className="ml-auto shrink-0">по {teamSize} {plural(teamSize, 'игроку', 'игрока', 'игроков')}</span>}
                 </div>
+                <div className="mt-1 text-xs text-muted">
+                  Первым входит капитан — называет команду и состав, остальные выбирают её по тому же коду
+                </div>
               </div>
             )}
 
@@ -181,36 +188,78 @@ export default function Lobby() {
                 </div>
               ) : (
                 <AnimatePresence initial={false}>
-                  {teams.map((t, i) => (
-                    <motion.div
-                      key={t.id}
-                      layout
-                      initial={{ opacity: 0, x: -20, scale: 0.95 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="flex items-center gap-3 rounded-xl border border-line bg-fg/[0.03] p-3"
-                    >
-                      {/* Номер — он же очередь хода: команды ходят строго по этому порядку */}
-                      <span className="w-5 shrink-0 text-center text-sm font-bold text-muted tabular-nums">{i + 1}</span>
-                      <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: t.color, boxShadow: `0 0 10px ${t.color}` }} />
-                      <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
-                      <button onClick={() => kick(t.id)} className="rounded-lg p-1.5 text-muted hover:bg-red-400/10 hover:text-red-400" title="Убрать команду">
-                        <X size={16} />
-                      </button>
-                    </motion.div>
-                  ))}
+                  {teams.map((t, i) => {
+                    const members = t.participants ?? []
+                    const answerer = members.find((p) => p.is_answerer)
+                    return (
+                      <motion.div
+                        key={t.id}
+                        layout
+                        initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className={`rounded-xl border p-3 ${t.ready ? 'border-green/50 bg-green/[0.07]' : 'border-line bg-fg/[0.03]'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Номер — он же очередь хода: команды ходят строго по этому порядку */}
+                          <span className="w-5 shrink-0 text-center text-sm font-bold text-muted tabular-nums">{i + 1}</span>
+                          <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: t.color, boxShadow: `0 0 10px ${t.color}` }} />
+                          <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
+                          <span className="shrink-0 text-xs text-muted tabular-nums">
+                            {members.length}
+                            {t.size ? ` из ${t.size}` : ''}
+                          </span>
+                          <button onClick={() => kick(t.id)} className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-red-400/10 hover:text-red-400" title="Убрать команду">
+                            <X size={16} />
+                          </button>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-8 text-xs">
+                          {members.map((p) => (
+                            <span
+                              key={p.id}
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${
+                                p.is_answerer ? 'border-green/50 text-green' : 'border-line text-muted'
+                              }`}
+                            >
+                              {p.is_captain && <Crown size={10} className="text-yellow-400" fill="currentColor" />}
+                              {p.is_answerer && <Pencil size={10} />}
+                              {p.name}
+                            </span>
+                          ))}
+                          {t.size && members.length < t.size && (
+                            <span className="text-muted">
+                              ждём ещё {t.size - members.length}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-2 pl-8 text-xs">
+                          {t.ready ? (
+                            <span className="inline-flex items-center gap-1 font-semibold text-green">
+                              <Check size={12} /> Готова — отвечает {answerer?.name}
+                            </span>
+                          ) : (
+                            <span className="text-muted">Капитан ещё не выбрал, кто пишет ответы</span>
+                          )}
+                        </div>
+                      </motion.div>
+                    )
+                  })}
                 </AnimatePresence>
               )}
             </div>
 
             {error && <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">{error}</div>}
 
-            <button onClick={begin} disabled={starting || !teams.length} className="btn btn-primary mt-5 w-full py-4 text-base">
-              {starting ? <Loader2 size={20} className="animate-spin" /> : <Rocket size={20} />} Начать игру
+            <button onClick={begin} disabled={starting || !allReady} className="btn btn-primary mt-5 w-full py-4 text-base">
+              {starting ? <Loader2 size={20} className="animate-spin" /> : <Rocket size={20} />}
+              {allReady ? 'Начать игру' : `Готовы ${ready} из ${teams.length || 0}`}
             </button>
             <p className="mt-2 text-center text-xs text-muted">
-              Ход пойдёт по номерам — от первой команды к последней и снова по кругу. После старта новые команды
-              подключиться не смогут
+              {allReady
+                ? 'Ход пойдёт по номерам — от первой команды к последней и снова по кругу. После старта новые участники подключиться не смогут'
+                : 'Ждём, пока капитаны соберут состав и назначат, кто пишет ответы'}
             </p>
           </motion.section>
         </div>

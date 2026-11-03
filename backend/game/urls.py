@@ -14,12 +14,14 @@ urlpatterns = [
     path("<int:pk>/answers/", views.GameAnswersView.as_view()),
     path("<int:pk>/anticheat/", views.GameAnticheatView.as_view()),
     path("<int:pk>/teams/<int:team_id>/pardon/", views.GamePardonView.as_view()),
+    path("<int:pk>/participants/<int:participant_id>/pardon/", views.GameParticipantPardonView.as_view()),
 ]
 
 # Онлайн: команды (подключаются в config/urls.py под /api/live/)
 live_urlpatterns = [
     path("<str:code>/", live.LiveStateView.as_view()),
     path("<str:code>/join/", live.LiveJoinView.as_view()),
+    path("<str:code>/answerer/", live.LiveAnswererView.as_view()),
     path("<str:code>/answer/", live.LiveAnswerView.as_view()),
     path("<str:code>/pick/", live.LivePickView.as_view()),
     path("<str:code>/violation/", live.LiveViolationView.as_view()),

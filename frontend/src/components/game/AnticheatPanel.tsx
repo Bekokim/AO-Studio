@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Ban, ShieldCheck, Undo2, WifiOff, X } from '../../lib/icons'
+import { Ban, Crown, Pencil, ShieldCheck, Undo2, WifiOff, X } from '../../lib/icons'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../lib/api'
 import { sounds } from '../../lib/sounds'
@@ -28,7 +28,7 @@ export default function AnticheatPanel() {
   const [status, setStatus] = useState<AnticheatStatus | null>(null)
   const [open, setOpen] = useState(false)
   // Свежее нарушение — всплывающее уведомление поверх игры
-  const [alert, setAlert] = useState<{ team: string; label: string; fatal: boolean } | null>(null)
+  const [alert, setAlert] = useState<{ who: string; team: string; label: string; fatal: boolean } | null>(null)
   const seen = useRef<Set<number>>(new Set())
   const first = useRef(true)
 
@@ -52,7 +52,7 @@ export default function AnticheatPanel() {
         }
         const last = fresh[0]
         if (last) {
-          setAlert({ team: last.team, label: last.label, fatal: last.fatal })
+          setAlert({ who: last.participant || last.team, team: last.team, label: last.label, fatal: last.fatal })
           if (last.fatal) sounds.alarm()
           else sounds.wrong()
         }
@@ -75,21 +75,64 @@ export default function AnticheatPanel() {
     return () => clearTimeout(t)
   }, [alert])
 
-  const pardon = async (teamId: number) => {
+  /** Вернуть в игру всю команду — вместе со всеми её выбывшими участниками */
+  const pardonTeam = async (teamId: number) => {
     setStatus((s) =>
       s
-        ? { ...s, teams: s.teams.map((t) => (t.id === teamId ? { ...t, disqualified: false, warnings: 0, dq_reason: '' } : t)) }
+        ? {
+            ...s,
+            teams: s.teams.map((t) =>
+              t.id === teamId
+                ? {
+                    ...t,
+                    disqualified: false,
+                    warnings: 0,
+                    dq_reason: '',
+                    participants: t.participants.map((p) => ({ ...p, disqualified: false, warnings: 0, dq_reason: '' })),
+                  }
+                : t,
+            ),
+          }
         : s,
     )
     await api.post(`/game/${sessionId}/teams/${teamId}/pardon/`).catch(() => {})
   }
 
+  /** Вернуть в игру одного участника. Если команда вылетела из-за него — она тоже возвращается */
+  const pardonParticipant = async (teamId: number, participantId: number) => {
+    setStatus((s) =>
+      s
+        ? {
+            ...s,
+            teams: s.teams.map((t) =>
+              t.id === teamId
+                ? {
+                    ...t,
+                    participants: t.participants.map((p) =>
+                      p.id === participantId ? { ...p, disqualified: false, warnings: 0, dq_reason: '' } : p,
+                    ),
+                  }
+                : t,
+            ),
+          }
+        : s,
+    )
+    await api.post(`/game/${sessionId}/participants/${participantId}/pardon/`).catch(() => {})
+  }
+
   if (!enabled || !status) return null
 
+  const allowed = status.participants_dq_allowed ?? 2
   const dq = status.teams.filter((t) => t.disqualified)
-  const warned = status.teams.filter((t) => !t.disqualified && t.warnings > 0)
-  const offline = status.teams.filter((t) => t.offline && !t.disqualified)
-  const attention = dq.length + warned.length + offline.length
+  // Выбывшие и предупреждённые считаются поимённо: нарушение теперь личное
+  const out = status.teams.flatMap((t) => t.participants.filter((p) => p.disqualified).map((p) => ({ team: t, p })))
+  const warned = status.teams.flatMap((t) =>
+    t.participants.filter((p) => !p.disqualified && p.warnings > 0).map((p) => ({ team: t, p })),
+  )
+  const offline = status.teams.flatMap((t) =>
+    t.participants.filter((p) => p.offline && !p.disqualified).map((p) => ({ team: t, p })),
+  )
+  const attention = out.length + warned.length + offline.length
 
   return (
     <>
@@ -110,9 +153,11 @@ export default function AnticheatPanel() {
               <Ban size={20} className={`mt-0.5 shrink-0 ${alert.fatal ? 'text-red-400' : 'text-yellow-400'}`} />
               <div className="min-w-0 flex-1 text-sm">
                 <div className={`font-bold ${alert.fatal ? 'text-red-400' : 'text-yellow-400'}`}>
-                  {alert.fatal ? `«${alert.team}» дисквалифицирована` : `Предупреждение: «${alert.team}»`}
+                  {alert.fatal ? `${alert.who} вне зачёта` : `Предупреждение: ${alert.who}`}
                 </div>
-                <div className="mt-0.5 text-muted">{alert.label}</div>
+                <div className="mt-0.5 text-muted">
+                  {alert.team} · {alert.label}
+                </div>
               </div>
               <button onClick={() => setAlert(null)} className="shrink-0 rounded-lg p-1 text-muted hover:text-fg" aria-label="Скрыть">
                 <X size={16} />
@@ -143,13 +188,13 @@ export default function AnticheatPanel() {
               </div>
 
               <p className="text-xs text-muted">
-                Прощается нарушений: {status.warnings_allowed}. Дальше команда вне зачёта, её баллы заморожены.
-                Дисквалификацию можно снять — команда вернётся в игру с обнулёнными предупреждениями.
+                Каждому участнику прощается нарушений: {status.warnings_allowed}. Дальше он вне зачёта, а когда
+                выбывают {allowed} — с игры снимают всю команду. Любого можно вернуть: предупреждения обнулятся.
               </p>
 
               {dq.length > 0 && (
                 <div className="mt-4">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">Дисквалифицированы</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">Команды сняты с игры</div>
                   <div className="space-y-2">
                     {dq.map((t) => (
                       <div key={t.id} className="rounded-xl border border-red-400/40 bg-red-400/5 p-3">
@@ -159,8 +204,35 @@ export default function AnticheatPanel() {
                           <span className="shrink-0 tabular-nums text-muted">{t.score}</span>
                         </div>
                         <div className="mt-1 text-xs text-muted">{t.dq_reason}</div>
-                        <button onClick={() => void pardon(t.id)} className="btn btn-ghost mt-2 w-full px-3 py-1.5 text-xs">
-                          <Undo2 size={14} /> Простить и вернуть в игру
+                        <button onClick={() => void pardonTeam(t.id)} className="btn btn-ghost mt-2 w-full px-3 py-1.5 text-xs">
+                          <Undo2 size={14} /> Вернуть команду в игру
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {out.length > 0 && (
+                <div className="mt-4">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">Участники вне зачёта</div>
+                  <div className="space-y-2">
+                    {out.map(({ team, p }) => (
+                      <div key={p.id} className="rounded-xl border border-red-400/40 bg-red-400/5 p-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: team.color }} />
+                          <span className="min-w-0 flex-1 truncate">
+                            {p.name}
+                            {p.is_captain && <Crown size={11} className="ml-1 inline text-yellow-400" fill="currentColor" />}
+                          </span>
+                          <span className="shrink-0 truncate text-xs text-muted">{team.name}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-muted">{p.dq_reason}</div>
+                        <button
+                          onClick={() => void pardonParticipant(team.id, p.id)}
+                          className="btn btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
+                        >
+                          <Undo2 size={14} /> Вернуть участника в игру
                         </button>
                       </div>
                     ))}
@@ -172,18 +244,18 @@ export default function AnticheatPanel() {
                 <div className="mt-4">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-yellow-400">Предупреждены</div>
                   <div className="space-y-1.5">
-                    {warned.map((t) => (
+                    {warned.map(({ team, p }) => (
                       <div
-                        key={t.id}
+                        key={p.id}
                         className="flex items-center gap-2 rounded-xl border border-yellow-400/30 bg-yellow-400/5 px-3 py-2 text-sm"
                       >
-                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: t.color }} />
-                        <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: team.color }} />
+                        <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
                         <span className="shrink-0 text-xs text-yellow-400">
-                          {t.warnings} из {status.warnings_allowed + 1}
+                          {p.warnings} из {status.warnings_allowed + 1}
                         </span>
                         <button
-                          onClick={() => void pardon(t.id)}
+                          onClick={() => void pardonParticipant(team.id, p.id)}
                           className="shrink-0 rounded-lg p-1 text-muted hover:text-fg"
                           title="Снять предупреждения"
                         >
@@ -199,15 +271,50 @@ export default function AnticheatPanel() {
                 <div className="mt-4">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Нет связи с устройством</div>
                   <div className="space-y-1.5">
-                    {offline.map((t) => (
-                      <div key={t.id} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm">
+                    {offline.map(({ team, p }) => (
+                      <div key={p.id} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm">
                         <WifiOff size={14} className="shrink-0 text-muted" />
-                        <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                        <span className="shrink-0 truncate text-xs text-muted">{team.name}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Кто за какую команду пишет ответы — ведущему это нужно, чтобы понимать, с кого спрос */}
+              <div className="mt-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Составы</div>
+                <div className="space-y-1.5">
+                  {status.teams.map((t) => (
+                    <div key={t.id} className="rounded-xl border border-line bg-fg/[0.03] px-3 py-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
+                        <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
+                        <span className="shrink-0 text-muted tabular-nums">{t.participants.length}</span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {t.participants.map((p) => (
+                          <span
+                            key={p.id}
+                            className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${
+                              p.disqualified
+                                ? 'border-red-400/40 text-red-400 line-through'
+                                : p.is_answerer
+                                  ? 'border-green/50 text-green'
+                                  : 'border-line text-muted'
+                            }`}
+                          >
+                            {p.is_captain && <Crown size={9} className="text-yellow-400" fill="currentColor" />}
+                            {p.is_answerer && <Pencil size={9} />}
+                            {p.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div className="mt-4">
                 <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Журнал нарушений</div>
@@ -218,14 +325,17 @@ export default function AnticheatPanel() {
                     {status.violations.map((v) => (
                       <div key={v.id} className="rounded-xl border border-line bg-fg/[0.03] px-3 py-2 text-xs">
                         <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${v.fatal ? 'text-red-400' : 'text-fg'}`}>{v.team}</span>
+                          <span className={`font-semibold ${v.fatal ? 'text-red-400' : 'text-fg'}`}>
+                            {v.participant || v.team}
+                          </span>
+                          {v.participant && <span className="truncate text-muted">{v.team}</span>}
                           <span className="ml-auto shrink-0 tabular-nums text-muted">
                             {new Date(v.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                           </span>
                         </div>
                         <div className="mt-0.5 text-muted">
                           {v.label}
-                          {v.fatal && <b className="text-red-400"> — дисквалификация</b>}
+                          {v.fatal && <b className="text-red-400"> — вне зачёта</b>}
                         </div>
                       </div>
                     ))}

@@ -1,13 +1,21 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Answer, GameSession, Team, Violation
+from .models import Answer, GameSession, Participant, Team, Violation
 
 
 class TeamInline(admin.TabularInline):
     model = Team
     extra = 0
-    fields = ["name", "color", "score", "warnings", "disqualified", "dq_reason"]
+    fields = ["name", "color", "score", "size", "answerer", "disqualified", "dq_reason"]
+    raw_id_fields = ["answerer"]
+
+
+class ParticipantInline(admin.TabularInline):
+    model = Participant
+    extra = 0
+    fields = ["name", "is_captain", "warnings", "disqualified", "dq_reason", "last_seen"]
+    readonly_fields = ["last_seen"]
 
 
 @admin.register(GameSession)
@@ -30,10 +38,12 @@ class GameSessionAdmin(admin.ModelAdmin):
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ["name", "color_box", "score", "warnings", "disqualified", "session"]
+    list_display = ["name", "color_box", "score", "size", "answerer", "disqualified", "session"]
     list_filter = ["disqualified"]
     search_fields = ["name", "session__room__title"]
     autocomplete_fields = ["session"]
+    raw_id_fields = ["answerer"]
+    inlines = [ParticipantInline]
 
     @admin.display(description="Цвет")
     def color_box(self, obj):
@@ -51,10 +61,19 @@ class AnswerAdmin(admin.ModelAdmin):
     raw_id_fields = ["question"]
 
 
+@admin.register(Participant)
+class ParticipantAdmin(admin.ModelAdmin):
+    list_display = ["name", "team", "is_captain", "warnings", "disqualified", "last_seen"]
+    list_filter = ["is_captain", "disqualified"]
+    search_fields = ["name", "team__name"]
+    raw_id_fields = ["team"]
+
+
 @admin.register(Violation)
 class ViolationAdmin(admin.ModelAdmin):
-    list_display = ["team", "kind", "fatal", "session", "at"]
+    list_display = ["participant", "team", "kind", "fatal", "session", "at"]
     list_filter = ["kind", "fatal"]
-    search_fields = ["team__name", "session__room__title"]
+    search_fields = ["team__name", "participant__name", "session__room__title"]
     autocomplete_fields = ["team", "session"]
+    raw_id_fields = ["participant"]
     date_hierarchy = "at"

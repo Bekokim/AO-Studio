@@ -86,26 +86,36 @@ export function useLiveAnswers(questionIds: number[], enabled = true) {
   return { answers, pick, online: mode === 'online' }
 }
 
-// ---------------- Команда (игрок) ----------------
+// ---------------- Участник (его телефон) ----------------
 
-export const teamTokenKey = (code: string) => `ao_team_${code.toUpperCase()}`
+/**
+ * Секрет устройства участника. Ключ именно `player`, а не прежний `team`: в играх,
+ * начатых до перехода на участников, по этому адресу лежал токен команды, и подсунуть
+ * его новому API нельзя — старый токен просто не найдётся, и человек войдёт заново.
+ */
+export const playerTokenKey = (code: string) => `ao_player_${code.toUpperCase()}`
 
-export function getTeamToken(code: string): string | null {
+export function getPlayerToken(code: string): string | null {
   try {
-    return localStorage.getItem(teamTokenKey(code))
+    return localStorage.getItem(playerTokenKey(code))
   } catch {
     return null
   }
 }
 
-/** Устройство команды: опрашивает состояние игры по коду */
+/** Заголовок, которым устройство участника подписывает свои запросы */
+export function playerAuth(code: string) {
+  return { 'X-Team-Token': getPlayerToken(code) ?? '' }
+}
+
+/** Устройство участника: опрашивает состояние игры по коду */
 export function useLiveState(code: string) {
   const [data, setData] = useState<LivePayload | null>(null)
   const [error, setError] = useState<'not_found' | 'network' | null>(null)
   const [fetchedAt, setFetchedAt] = useState(0)
 
   const load = useCallback(async () => {
-    const token = getTeamToken(code)
+    const token = getPlayerToken(code)
     try {
       const { data } = await api.get<LivePayload>(`/live/${code}/`, {
         headers: token ? { 'X-Team-Token': token } : {},

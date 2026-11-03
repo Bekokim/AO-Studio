@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { API_BASE, api } from '../lib/api'
 import type { ViolationKind } from '../lib/types'
-import { getTeamToken } from './useLive'
+import { getPlayerToken } from './useLive'
 
 /**
- * Античит на устройстве команды.
+ * Античит на устройстве участника.
  *
- * Браузер не может запретить свернуть страницу или открыть другую вкладку — такое умеет только
- * нативное приложение. Зато он честно сообщает, что страница ушла с экрана, а это и есть попытка
+ * Телефоны не отбирают: вместо этого телефон каждого занят экраном игры. Браузер не может
+ * запретить свернуть страницу или открыть другую вкладку — такое умеет только нативное
+ * приложение. Зато он честно сообщает, что страница ушла с экрана, а это и есть попытка
  * подсмотреть ответ. Поэтому мы держим игру в полноэкранном режиме и сообщаем серверу о каждом
- * уходе: первое нарушение — предупреждение, следующее — дисквалификация.
+ * уходе: первое нарушение — предупреждение, следующее — участник вне зачёта. Когда вне зачёта
+ * оказываются двое, из игры выбывает вся команда.
  *
  * Ловим:
  *  - `visibilitychange` — свернули браузер, переключились на другое приложение или вкладку;
@@ -17,6 +19,11 @@ import { getTeamToken } from './useLive'
  *  - `fullscreenchange` — вышли из полного экрана;
  *  - `pagehide` — закрыли или перезагрузили страницу (сообщаем через sendBeacon — обычный
  *    запрос на закрытии вкладки не успевает уйти).
+ *
+ * Пока идёт игра, держим экран включённым через Screen Wake Lock. Без этого телефон гасил бы
+ * экран сам через минуту-другую покоя, страница уходила бы в `hidden` — и участник, который
+ * просто держит телефон в руках, получал бы нарушение на ровном месте. Там, где Wake Lock
+ * не поддерживается, остаётся обычное поведение телефона.
  */
 
 /** Задержка перед наказанием за потерю фокуса: отсекает мгновенные срабатывания самого браузера */
@@ -88,10 +95,16 @@ export function useAnticheat({ code, enabled, active, server }: Options): Antich
       if (now - sentAt.current < 1500) return
       sentAt.current = now
       try {
-        const { data } = await api.post<{ counted: boolean; warnings: number; disqualified: boolean; dq_reason: string }>(
+        const { data } = await api.post<{
+          counted: boolean
+          warnings: number
+          disqualified: boolean
+          dq_reason: string
+          team_disqualified: boolean
+        }>(
           `/live/${code}/violation/`,
           { kind },
-          { headers: { 'X-Team-Token': getTeamToken(code) ?? '' } },
+          { headers: { 'X-Team-Token': getPlayerToken(code) ?? '' } },
         )
         if (!data.counted) return
         setWarnings(data.warnings)
@@ -110,7 +123,7 @@ export function useAnticheat({ code, enabled, active, server }: Options): Antich
   const beacon = useCallback(
     (kind: ViolationKind) => {
       if (!onRef.current || !navigator.sendBeacon) return
-      const body = JSON.stringify({ kind, token: getTeamToken(code) ?? '' })
+      const body = JSON.stringify({ kind, token: getPlayerToken(code) ?? '' })
       try {
         navigator.sendBeacon(`${API_BASE}/live/${code}/violation/`, new Blob([body], { type: 'application/json' }))
       } catch {
@@ -133,6 +146,35 @@ export function useAnticheat({ code, enabled, active, server }: Options): Antich
   }, [])
 
   const dismiss = useCallback(() => setLastWarning(null), [])
+
+  // Держим экран включённым, пока идёт игра: автоблокировка телефона выглядела бы как уход с экрана
+  useEffect(() => {
+    if (!on) return
+    type WakeLock = { release: () => Promise<void> }
+    const api = (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<WakeLock> } }).wakeLock
+    if (!api) return
+    let lock: WakeLock | null = null
+    let dropped = false
+
+    const acquire = async () => {
+      if (dropped || document.visibilityState !== 'visible') return
+      try {
+        lock = await api.request('screen')
+      } catch {
+        // Батарея на исходе или браузер отказал — экран погаснет сам, это не нарушение по нашей вине
+      }
+    }
+    // После возврата на экран блокировка снимается браузером — берём её заново
+    const onVisible = () => document.visibilityState === 'visible' && void acquire()
+
+    void acquire()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      dropped = true
+      document.removeEventListener('visibilitychange', onVisible)
+      void lock?.release().catch(() => {})
+    }
+  }, [on])
 
   // Слушатели уходов с экрана
   useEffect(() => {

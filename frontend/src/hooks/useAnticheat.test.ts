@@ -12,7 +12,7 @@ vi.mock('../lib/api', () => ({
 }))
 
 vi.mock('./useLive', () => ({
-  getTeamToken: () => 'team-token',
+  getPlayerToken: () => 'player-token',
 }))
 
 /** Ответ сервера на сообщение о нарушении */
@@ -23,6 +23,8 @@ function violationReply(warnings: number, disqualified = false, counted = true) 
       warnings,
       disqualified,
       dq_reason: disqualified ? 'Ушли с экрана дважды' : '',
+      // Двое выбывших снимают команду целиком — хук это только передаёт дальше
+      team_disqualified: false,
     },
   }
 }
@@ -79,7 +81,7 @@ describe('полноэкранный режим', () => {
     expect(requestFullscreen).toHaveBeenCalled()
   })
 
-  it('если полный экран отклонён, команда всё равно не застревает на заглушке', () => {
+  it('если полный экран отклонён, участник всё равно не застревает на заглушке', () => {
     document.documentElement.requestFullscreen = vi.fn().mockRejectedValue(new Error('отказано'))
 
     const { result } = renderHook(() => useAnticheat(OPTS))
@@ -88,7 +90,7 @@ describe('полноэкранный режим', () => {
     expect(result.current.armed).toBe(true)
   })
 
-  it('дисквалифицированную команду включать защиту не просим', () => {
+  it('выбывшего участника включать защиту не просим', () => {
     const { result } = renderHook(() =>
       useAnticheat({ ...OPTS, server: { warnings: 2, disqualified: true, dq_reason: 'Ушли с экрана' } }),
     )
@@ -108,7 +110,7 @@ describe('полноэкранный режим', () => {
     expect(post).toHaveBeenCalledWith(
       '/live/ABC123/violation/',
       { kind: 'fullscreen' },
-      { headers: { 'X-Team-Token': 'team-token' } },
+      { headers: { 'X-Team-Token': 'player-token' } },
     )
   })
 })
@@ -123,7 +125,7 @@ describe('уход с экрана', () => {
     expect(post).toHaveBeenCalledWith(
       '/live/ABC123/violation/',
       { kind: 'hidden' },
-      { headers: { 'X-Team-Token': 'team-token' } },
+      { headers: { 'X-Team-Token': 'player-token' } },
     )
     expect(result.current.warnings).toBe(1)
     expect(result.current.disqualified).toBe(false)
@@ -136,7 +138,7 @@ describe('уход с экрана', () => {
     expect(post).not.toHaveBeenCalled()
   })
 
-  it('второе нарушение дисквалифицирует и убирает баннер предупреждения', async () => {
+  it('второе нарушение выводит из зачёта и убирает баннер предупреждения', async () => {
     post.mockResolvedValue(violationReply(2, true))
     const { result } = renderHook(() => useAnticheat(OPTS))
     setDoc('visibilityState', 'hidden')
@@ -197,7 +199,7 @@ describe('уход с экрана', () => {
     expect(post).toHaveBeenCalledTimes(2)
   })
 
-  it('дисквалифицированная команда о нарушениях больше не сообщает', async () => {
+  it('выбывший участник о нарушениях больше не сообщает', async () => {
     post.mockResolvedValue(violationReply(2, true))
     renderHook(() => useAnticheat(OPTS))
     setDoc('visibilityState', 'hidden')
@@ -228,7 +230,7 @@ describe('потеря фокуса', () => {
     expect(post).toHaveBeenCalledWith(
       '/live/ABC123/violation/',
       { kind: 'blur' },
-      { headers: { 'X-Team-Token': 'team-token' } },
+      { headers: { 'X-Team-Token': 'player-token' } },
     )
   })
 

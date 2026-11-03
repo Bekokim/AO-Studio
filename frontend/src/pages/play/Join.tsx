@@ -1,50 +1,93 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, Loader2 } from '../../lib/icons'
+import { ArrowRight, Check, Crown, Loader2, Users } from '../../lib/icons'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Logo from '../../components/Logo'
-import { getTeamToken, teamTokenKey } from '../../hooks/useLive'
+import { getPlayerToken, playerTokenKey } from '../../hooks/useLive'
 import { api, errorMessage } from '../../lib/api'
-import type { LivePayload } from '../../lib/types'
+import type { LivePayload, Team } from '../../lib/types'
 import { plural } from '../../lib/utils'
 
-/** Вход команды в онлайн-игру: код комнаты + название команды. Аккаунт не нужен. */
+/**
+ * Вход участника в игру с доски. Аккаунт не нужен — только код с экрана ведущего.
+ *
+ * Первым заходит капитан: он называет команду и говорит, сколько их. Остальные входят следом
+ * и выбирают свою команду из списка. Каждый участник — со своего телефона.
+ */
 export default function Join() {
   const params = useParams()
   const navigate = useNavigate()
   const [code, setCode] = useState((params.code ?? '').toUpperCase())
   const [name, setName] = useState('')
+  const [teamName, setTeamName] = useState('')
+  const [size, setSize] = useState('')
+  // Какую команду выбрал участник; null — он капитан и заводит новую
+  const [teamId, setTeamId] = useState<number | null>(null)
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [game, setGame] = useState<LivePayload | null>(null)
-  const room = game?.room ?? null
 
   const validCode = /^[A-Z0-9]{6}$/.test(code)
+  const teams = game?.teams ?? []
+  const maxSize = Math.min(game?.team_size || game?.max_team_size || 20, game?.max_team_size || 20)
+  // Ведущий задал состав при запуске — капитану его менять не нужно
+  const fixedSize = (game?.team_size ?? 0) > 0
+  const full = !!game?.expected_teams && teams.length >= game.expected_teams
 
   // Уже в этой игре с этого устройства — сразу на игровой экран
   useEffect(() => {
-    if (validCode && getTeamToken(code)) navigate(`/play/${code}`, { replace: true })
+    if (validCode && getPlayerToken(code)) navigate(`/play/${code}`, { replace: true })
   }, [code, validCode, navigate])
 
-  // Подсказываем, к какой игре подключаемся и какой состав ждёт ведущий
+  // Подсказываем, к какой игре подключаемся, и держим список команд свежим
   useEffect(() => {
     setGame(null)
     if (!validCode) return
-    api
-      .get<LivePayload>(`/live/${code}/`)
-      .then(({ data }) => setGame(data))
-      .catch(() => setGame(null))
+    let stop = false
+    const load = () =>
+      api
+        .get<LivePayload>(`/live/${code}/`)
+        .then(({ data }) => !stop && setGame(data))
+        .catch(() => !stop && setGame(null))
+    void load()
+    const t = setInterval(load, 2000)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
   }, [code, validCode])
+
+  // Ведущий задал размер команды — подставляем его капитану
+  useEffect(() => {
+    if (fixedSize && game) setSize(String(game.team_size))
+  }, [fixedSize, game])
+
+  // Команд ещё нет — первому входящему сразу показываем форму капитана
+  useEffect(() => {
+    if (game && teams.length === 0) setCreating(true)
+  }, [game, teams.length])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!validCode) return setError('Код — 6 символов, его показывает ведущий')
-    if (name.trim().length < 2) return setError('Введите название команды')
+    if (name.trim().length < 2) return setError('Введите своё имя')
+    if (creating) {
+      if (teamName.trim().length < 2) return setError('Введите название команды')
+      const n = Number(size)
+      if (!Number.isInteger(n) || n < 1 || n > maxSize) return setError(`Сколько вас в команде? Число от 1 до ${maxSize}`)
+    } else if (!teamId) {
+      return setError('Выберите свою команду')
+    }
+
     setLoading(true)
     setError('')
     try {
-      const { data } = await api.post<LivePayload & { token: string }>(`/live/${code}/join/`, { name: name.trim() })
-      localStorage.setItem(teamTokenKey(code), data.token)
+      const body = creating
+        ? { name: name.trim(), team_name: teamName.trim(), size: Number(size) }
+        : { name: name.trim(), team_id: teamId }
+      const { data } = await api.post<LivePayload & { token: string }>(`/live/${code}/join/`, body)
+      localStorage.setItem(playerTokenKey(code), data.token)
       navigate(`/play/${code}`, { replace: true })
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status
@@ -53,6 +96,8 @@ export default function Join() {
       setLoading(false)
     }
   }
+
+  const teamFull = (t: Team) => !!t.size && (t.participants?.length ?? 0) >= t.size
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
@@ -83,35 +128,129 @@ export default function Join() {
             autoFocus={!params.code}
           />
         </label>
-        {room && (
-          <div className="mt-2 text-center text-sm text-green">{room.title}</div>
-        )}
-        {game && (game.expected_teams > 0 || game.team_size > 0) && (
-          <div className="mt-1 text-center text-xs text-muted">
-            {game.expected_teams > 0 && `Команд: ${game.teams.length} из ${game.expected_teams}`}
-            {game.expected_teams > 0 && game.team_size > 0 && ' · '}
-            {game.team_size > 0 && `по ${game.team_size} ${plural(game.team_size, 'игроку', 'игрока', 'игроков')}`}
-          </div>
-        )}
+        {game && <div className="mt-2 text-center text-sm text-green">{game.room.title}</div>}
 
         <label className="mt-4 block">
-          <span className="mb-1.5 block text-sm font-medium text-muted">Название команды или ваше имя</span>
+          <span className="mb-1.5 block text-sm font-medium text-muted">Ваше имя</span>
           <input
             className="input text-lg"
             value={name}
             maxLength={40}
-            placeholder="Например: Ала-Тоо"
+            placeholder="Например: Азамат"
             onChange={(e) => setName(e.target.value)}
             autoFocus={!!params.code}
           />
         </label>
-        <p className="mt-1.5 text-xs text-muted">
-          Одна команда играет с одного устройства — подключается кто-то один за всю команду.
+
+        {game && (
+          <>
+            {/* Выбор команды: к уже заведённой или своя, если ты капитан */}
+            {teams.length > 0 && (
+              <div className="mt-5">
+                <span className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-muted">
+                  <Users size={15} /> Ваша команда
+                </span>
+                <div className="space-y-1.5">
+                  {teams.map((t) => {
+                    const here = t.participants?.length ?? 0
+                    const isFull = teamFull(t)
+                    const picked = !creating && teamId === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        disabled={isFull}
+                        onClick={() => {
+                          setCreating(false)
+                          setTeamId(t.id)
+                          setError('')
+                        }}
+                        className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
+                          picked
+                            ? 'border-green bg-green/10'
+                            : isFull
+                              ? 'cursor-not-allowed border-line opacity-50'
+                              : 'border-line hover:border-green/60'
+                        }`}
+                      >
+                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: t.color }} />
+                        <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
+                        <span className="shrink-0 text-xs text-muted tabular-nums">
+                          {t.size ? `${here} из ${t.size}` : here}
+                        </span>
+                        {picked && <Check size={16} className="shrink-0 text-green" />}
+                      </button>
+                    )
+                  })}
+                </div>
+                {!full && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreating(true)
+                      setTeamId(null)
+                      setError('')
+                    }}
+                    className={`mt-2 flex w-full items-center gap-2 rounded-xl border border-dashed px-3 py-2.5 text-sm transition ${
+                      creating ? 'border-green bg-green/10 text-green' : 'border-line text-muted hover:border-green/60'
+                    }`}
+                  >
+                    <Crown size={15} /> Я капитан — завести новую команду
+                  </button>
+                )}
+              </div>
+            )}
+
+            {creating && (
+              <div className="mt-4 rounded-2xl border border-green/40 bg-green/[0.07] p-4">
+                <div className="flex items-center gap-1.5 text-sm font-bold text-green">
+                  <Crown size={15} /> Вы капитан
+                </div>
+                <label className="mt-3 block">
+                  <span className="mb-1.5 block text-sm font-medium text-muted">Название команды</span>
+                  <input
+                    className="input"
+                    value={teamName}
+                    maxLength={40}
+                    placeholder="Например: Ала-Тоо"
+                    onChange={(e) => setTeamName(e.target.value)}
+                  />
+                </label>
+                <label className="mt-3 block">
+                  <span className="mb-1.5 block text-sm font-medium text-muted">Сколько вас в команде</span>
+                  <input
+                    className="input"
+                    value={size}
+                    disabled={fixedSize}
+                    inputMode="numeric"
+                    placeholder={`от 1 до ${maxSize}`}
+                    onChange={(e) => setSize(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                  />
+                </label>
+                <p className="mt-2 text-xs text-muted">
+                  {fixedSize
+                    ? `Ведущий задал состав: ${game.team_size} ${plural(game.team_size, 'игрок', 'игрока', 'игроков')}.`
+                    : 'Считая вас. Остальные войдут по тому же коду и выберут вашу команду.'}
+                </p>
+              </div>
+            )}
+
+            {game.expected_teams > 0 && (
+              <div className="mt-3 text-center text-xs text-muted">
+                Команд: {teams.length} из {game.expected_teams}
+              </div>
+            )}
+          </>
+        )}
+
+        <p className="mt-4 text-xs text-muted">
+          Каждый участник входит со своего телефона. Телефон останется у вас, но во время игры будет занят её
+          экраном.
         </p>
 
         {error && <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">{error}</div>}
 
-        <button type="submit" disabled={loading} className="btn btn-primary mt-6 w-full py-3.5 text-base">
+        <button type="submit" disabled={loading} className="btn btn-primary mt-5 w-full py-3.5 text-base">
           {loading ? <Loader2 size={20} className="animate-spin" /> : <ArrowRight size={20} />} Присоединиться
         </button>
       </motion.form>

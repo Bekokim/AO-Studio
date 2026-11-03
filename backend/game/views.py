@@ -10,8 +10,8 @@ from rest_framework.views import APIView
 
 from rooms.models import AORoom
 
-from .live import WARNINGS_ALLOWED, answer_matches
-from .models import Answer, GameSession, Team, generate_code
+from .live import PARTICIPANTS_DQ_ALLOWED, WARNINGS_ALLOWED, answer_matches
+from .models import Answer, GameSession, Participant, Team, generate_code
 from .serializers import (
     GameSessionSerializer,
     GameStartSerializer,
@@ -146,8 +146,16 @@ class GameBeginView(APIView):
         session = host_session(request, pk)
         if session.status != GameSession.STATUS_LOBBY:
             return Response({"detail": "Игра уже началась."}, status=status.HTTP_400_BAD_REQUEST)
-        if not session.teams.exists():
+        teams = list(session.teams.prefetch_related("participants"))
+        if not teams:
             return Response({"detail": "Дождитесь хотя бы одной команды."}, status=status.HTTP_400_BAD_REQUEST)
+        # Команда готова, когда капитан назначил отвечающего
+        not_ready = [t.name for t in teams if not t.ready]
+        if not_ready:
+            return Response(
+                {"detail": "Ещё не готовы: " + ", ".join(not_ready) + ". Капитан выбирает, кто пишет ответы."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         session.status = GameSession.STATUS_ACTIVE
         session.state = {"view": "waiting"}
         session.state_version += 1
@@ -200,9 +208,15 @@ class GameAnticheatView(APIView):
     def get(self, request, pk):
         session = host_session(request, pk)
         now = timezone.now()
+
+        def offline(obj):
+            # Устройство молчит дольше 10 с — скорее всего, страница игры закрыта
+            return bool(obj.last_seen and (now - obj.last_seen).total_seconds() > 10)
+
         return Response({
             "anticheat": session.anticheat,
             "warnings_allowed": WARNINGS_ALLOWED,
+            "participants_dq_allowed": PARTICIPANTS_DQ_ALLOWED,
             "teams": [
                 {
                     "id": t.id,
@@ -212,37 +226,79 @@ class GameAnticheatView(APIView):
                     "warnings": t.warnings,
                     "disqualified": t.disqualified,
                     "dq_reason": t.dq_reason,
-                    # Устройство молчит дольше 10 с — скорее всего, страница игры закрыта
-                    "offline": bool(t.last_seen and (now - t.last_seen).total_seconds() > 10),
+                    "offline": offline(t),
+                    "participants": [
+                        {
+                            "id": p.id,
+                            "name": p.name,
+                            "is_captain": p.is_captain,
+                            "is_answerer": t.answerer_id == p.id,
+                            "warnings": p.warnings,
+                            "disqualified": p.disqualified,
+                            "dq_reason": p.dq_reason,
+                            "offline": offline(p),
+                        }
+                        for p in t.participants.all()
+                    ],
                 }
-                for t in session.teams.all()
+                for t in session.teams.prefetch_related("participants")
             ],
             "violations": [
                 {
                     "id": v.id,
                     "team_id": v.team_id,
                     "team": v.team.name,
+                    "participant_id": v.participant_id,
+                    "participant": v.participant.name if v.participant_id else "",
                     "kind": v.kind,
                     "label": v.get_kind_display(),
                     "fatal": v.fatal,
                     "at": v.at,
                 }
-                for v in session.violations.select_related("team")[:30]
+                for v in session.violations.select_related("team", "participant")[:30]
             ],
         })
 
 
+def clear_dq(obj):
+    obj.warnings = 0
+    obj.disqualified = False
+    obj.dq_reason = ""
+    obj.dq_at = None
+    obj.save(update_fields=["warnings", "disqualified", "dq_reason", "dq_at"])
+
+
 class GamePardonView(APIView):
-    """Ведущий прощает команду: снимает дисквалификацию и обнуляет предупреждения."""
+    """Ведущий возвращает команду в игру: снимает дисквалификацию со всего состава.
+
+    Команда выбывает, когда вне зачёта оказываются двое, поэтому возвращать её по одному
+    участнику бессмысленно — сняли бы с команды и тут же вернули обратно.
+    """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk, team_id):
         session = host_session(request, pk)
         team = get_object_or_404(Team, pk=team_id, session=session)
-        team.warnings = 0
-        team.disqualified = False
-        team.dq_reason = ""
-        team.dq_at = None
-        team.save(update_fields=["warnings", "disqualified", "dq_reason", "dq_at"])
+        with transaction.atomic():
+            clear_dq(team)
+            for p in team.participants.filter(disqualified=True):
+                clear_dq(p)
         return Response({"ok": True, "team_id": team.id})
+
+
+class GameParticipantPardonView(APIView):
+    """Ведущий возвращает в игру одного участника."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk, participant_id):
+        session = host_session(request, pk)
+        participant = get_object_or_404(Participant, pk=participant_id, team__session=session)
+        team = participant.team
+        with transaction.atomic():
+            clear_dq(participant)
+            # Команда вылетела из-за выбывших — пересчитываем, хватает ли их ещё
+            if team.disqualified and team.participants.filter(disqualified=True).count() < PARTICIPANTS_DQ_ALLOWED:
+                clear_dq(team)
+        return Response({"ok": True, "participant_id": participant.id, "team_id": team.id})
