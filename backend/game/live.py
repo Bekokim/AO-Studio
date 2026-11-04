@@ -92,6 +92,7 @@ def team_payload(team: Team, *, with_participants=True):
         "disqualified": team.disqualified,
         "size": team.size,
         "answerer_id": team.answerer_id,
+        "next_answerer_id": team.next_answerer_id,
         "ready": team.ready,
     }
     if with_participants:
@@ -101,6 +102,7 @@ def team_payload(team: Team, *, with_participants=True):
                 "name": p.name,
                 "is_captain": p.is_captain,
                 "is_answerer": team.answerer_id == p.id,
+                "is_next_answerer": team.next_answerer_id == p.id,
                 "disqualified": p.disqualified,
                 "warnings": p.warnings,
             }
@@ -141,6 +143,7 @@ def public_payload(session: GameSession, participant: Participant | None = None)
             "name": participant.name,
             "is_captain": participant.is_captain,
             "is_answerer": team.answerer_id == participant.id,
+            "is_next_answerer": team.next_answerer_id == participant.id,
             "disqualified": participant.disqualified,
             "warnings": participant.warnings,
             "dq_reason": participant.dq_reason,
@@ -286,8 +289,10 @@ class LiveJoinView(LiveBase):
 class LiveAnswererView(LiveBase):
     """Капитан назначает участника, который пишет ответы за команду.
 
-    До старта это и есть готовность команды. В идущей игре менять можно между вопросами:
-    пока вопрос открыт, подмена отвечающего была бы способом тянуть время.
+    До старта это и есть готовность команды. В игре выбор доступен всегда, но пока открыт
+    текущий вопрос, подменять отвечающего нельзя — это был бы способ тянуть время. Поэтому
+    выбор, сделанный во время вопроса, ждёт своей очереди и вступает в силу, когда ведущий
+    откроет следующий.
     """
 
     def post(self, request, code):
@@ -297,13 +302,10 @@ class LiveAnswererView(LiveBase):
             return Response({"detail": "Сначала присоединитесь к игре."}, status=status.HTTP_403_FORBIDDEN)
         if not me.is_captain:
             return Response({"detail": "Отвечающего назначает капитан."}, status=status.HTTP_403_FORBIDDEN)
-        if session.status == GameSession.STATUS_ACTIVE and (session.state or {}).get("view") == "question":
-            return Response(
-                {"detail": "Вопрос уже открыт — поменять отвечающего можно будет до следующего."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         team = me.team
+        if team.disqualified:
+            return Response({"detail": "Команда снята с игры."}, status=status.HTTP_400_BAD_REQUEST)
         target = team.participants.filter(pk=request.data.get("participant_id")).first()
         if not target:
             return Response({"detail": "Участник не найден."}, status=status.HTTP_400_BAD_REQUEST)
@@ -311,11 +313,29 @@ class LiveAnswererView(LiveBase):
             return Response(
                 {"detail": "Этот участник вне зачёта — выберите другого."}, status=status.HTTP_400_BAD_REQUEST
             )
-        team.answerer = target
-        team.save(update_fields=["answerer"])
+
+        in_question = session.status == GameSession.STATUS_ACTIVE and (session.state or {}).get("view") == "question"
+        if in_question:
+            team.next_answerer = target
+            team.save(update_fields=["next_answerer"])
+        else:
+            team.answerer = target
+            team.next_answerer = None
+            team.save(update_fields=["answerer", "next_answerer"])
         maybe_autostart(session)
         session.refresh_from_db()
-        return Response(public_payload(session, me))
+        return Response({"queued": in_question, **public_payload(session, me)})
+
+
+def apply_next_answerers(session: GameSession):
+    """Открылся следующий вопрос — пересаживаем тех, кого капитаны наметили во время прошлого."""
+    pending = session.teams.exclude(next_answerer=None).select_related("next_answerer")
+    for team in pending:
+        # Участник мог вылететь, пока шёл вопрос, — тогда замена не состоится
+        if team.next_answerer and not team.next_answerer.disqualified:
+            team.answerer_id = team.next_answerer_id
+        team.next_answerer = None
+        team.save(update_fields=["answerer", "next_answerer"])
 
 
 class LiveAnswerView(LiveBase):

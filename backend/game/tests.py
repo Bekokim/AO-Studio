@@ -327,7 +327,8 @@ class TeamSetupTests(LiveMixin, APITestCase):
         self.assertEqual(team.answerer_id, mate.id)
         self.assertTrue(team.ready, "отвечающий назначен — команда готова")
 
-    def test_answerer_cannot_be_swapped_while_a_question_is_open(self):
+    def test_answerer_is_not_swapped_mid_question(self):
+        """Во время вопроса выбор не подменяет отвечающего сразу — он ждёт следующего вопроса."""
         captain_token = self.join_captain(self.code, size=2).data["token"]
         team = Team.objects.get(session=self.session)
         mate = Participant.objects.get(token=self.join_member(self.code, team.id, "Бакыт").data["token"])
@@ -338,16 +339,99 @@ class TeamSetupTests(LiveMixin, APITestCase):
         self.session.state = {"view": "question", "accepting": True, "question": {"id": self.question.id}}
         self.session.save(update_fields=["status", "state"])
         res = self.set_answerer(self.code, captain_token, mate.id)
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("до следующего", res.data["detail"])
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.data["queued"])
+        team.refresh_from_db()
+        self.assertEqual(team.answerer_id, captain.id, "текущий вопрос дописывает прежний отвечающий")
+        self.assertEqual(team.next_answerer_id, mate.id)
 
-        # Между вопросами — можно
+        # Между вопросами — сразу
         self.session.state = {"view": "grid", "available": []}
         self.session.save(update_fields=["state"])
         res = self.set_answerer(self.code, captain_token, mate.id)
         self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.data["queued"])
         team.refresh_from_db()
         self.assertEqual(team.answerer_id, mate.id)
+        self.assertIsNone(team.next_answerer_id)
+
+    def test_choice_during_a_question_waits_for_the_next_one(self):
+        """Во время вопроса капитан выбирает на следующий — текущего отвечающего это не меняет."""
+        captain_token = self.join_captain(self.code, size=3).data["token"]
+        team = Team.objects.get(session=self.session)
+        captain = Participant.objects.get(token=captain_token)
+        mate = Participant.objects.get(token=self.join_member(self.code, team.id, "Бакыт").data["token"])
+        self.set_answerer(self.code, captain_token, captain.id)
+
+        self.client.force_authenticate(self.host)
+        open_question = lambda qid: self.client.patch(
+            f"/api/game/{self.session.id}/state/",
+            {"state": {"view": "question", "accepting": True, "question": {"id": qid}}},
+            format="json",
+        )
+        self.session.status = GameSession.STATUS_ACTIVE
+        self.session.save(update_fields=["status"])
+        open_question(self.question.id)
+        self.client.force_authenticate(None)
+
+        res = self.set_answerer(self.code, captain_token, mate.id)
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertTrue(res.data["queued"], "выбор встал в очередь")
+        team.refresh_from_db()
+        self.assertEqual(team.answerer_id, captain.id, "на текущем вопросе отвечает прежний")
+        self.assertEqual(team.next_answerer_id, mate.id)
+
+        # Ведущий открывает следующий вопрос — замена вступает в силу
+        other = Question.objects.create(room=self.room, text="3+3?", answer="6", points=1)
+        self.client.force_authenticate(self.host)
+        open_question(other.id)
+        team.refresh_from_db()
+        self.assertEqual(team.answerer_id, mate.id)
+        self.assertIsNone(team.next_answerer_id)
+
+    def test_choice_between_questions_applies_at_once(self):
+        captain_token = self.join_captain(self.code, size=3).data["token"]
+        team = Team.objects.get(session=self.session)
+        captain = Participant.objects.get(token=captain_token)
+        mate = Participant.objects.get(token=self.join_member(self.code, team.id, "Бакыт").data["token"])
+        self.set_answerer(self.code, captain_token, captain.id)
+
+        self.session.status = GameSession.STATUS_ACTIVE
+        self.session.state = {"view": "grid", "available": []}
+        self.session.save(update_fields=["status", "state"])
+
+        res = self.set_answerer(self.code, captain_token, mate.id)
+        self.assertFalse(res.data["queued"])
+        team.refresh_from_db()
+        self.assertEqual(team.answerer_id, mate.id)
+        self.assertIsNone(team.next_answerer_id)
+
+    def test_queued_participant_who_drops_out_is_not_seated(self):
+        captain_token = self.join_captain(self.code, size=3).data["token"]
+        team = Team.objects.get(session=self.session)
+        captain = Participant.objects.get(token=captain_token)
+        mate_token = self.join_member(self.code, team.id, "Бакыт").data["token"]
+        mate = Participant.objects.get(token=mate_token)
+        self.set_answerer(self.code, captain_token, captain.id)
+
+        self.session.status = GameSession.STATUS_ACTIVE
+        self.session.state = {"view": "question", "accepting": True, "question": {"id": self.question.id}}
+        self.session.save(update_fields=["status", "state"])
+        self.set_answerer(self.code, captain_token, mate.id)
+
+        # Намеченный вылетел, пока шёл вопрос
+        Participant.objects.filter(pk=mate.pk).update(disqualified=True, dq_reason="Свернул игру")
+
+        other = Question.objects.create(room=self.room, text="3+3?", answer="6", points=1)
+        self.client.force_authenticate(self.host)
+        self.client.patch(
+            f"/api/game/{self.session.id}/state/",
+            {"state": {"view": "question", "accepting": True, "question": {"id": other.id}}},
+            format="json",
+        )
+        team.refresh_from_db()
+        self.assertEqual(team.answerer_id, captain.id, "за команду по-прежнему отвечает капитан")
+        self.assertIsNone(team.next_answerer_id)
 
     def test_losing_the_answerer_leaves_the_team_without_one(self):
         """Отвечающего вывели из зачёта — капитан обязан назначить нового."""

@@ -67,6 +67,8 @@ export interface Participant {
   name: string
   is_captain: boolean
   is_answerer: boolean
+  /** Капитан наметил его на следующий вопрос, пока идёт текущий */
+  is_next_answerer?: boolean
   disqualified?: boolean
   warnings?: number
   dq_reason?: string
@@ -86,6 +88,9 @@ export interface Team {
   /** Кто пишет ответы за команду */
   answerer?: number | null
   answerer_id?: number | null
+  /** Кого капитан наметил на следующий вопрос */
+  next_answerer?: number | null
+  next_answerer_id?: number | null
   /** Капитан назначил отвечающего — ведущий может начинать */
   ready?: boolean
   participants?: Participant[]
@@ -225,6 +230,23 @@ export interface LiveAnswer {
   text: string
   matches: boolean
   submitted_at: string
+}
+
+/** Заготовка комнаты, собранная ИИ по описанию. В базу не сохраняется — едет в редактор */
+export interface AiRoomDraft {
+  title: string
+  format: GameFormat
+  description: string
+  timer_duration: number
+  categories: { name: string; questions: AiQuestionDraft[] }[]
+  questions: AiQuestionDraft[]
+}
+
+export interface AiQuestionDraft {
+  text: string
+  answer: string
+  alt_answers: string[]
+  points: number
 }
 
 export interface PlatformStats {

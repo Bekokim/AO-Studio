@@ -1,6 +1,9 @@
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
+from . import ai
 from .models import AORoom, Category, Question
 
 User = get_user_model()
@@ -267,3 +270,139 @@ class AnswerMatchingTests(APITestCase):
         self.assertFalse(answer_matches("!!!", "Бишкек", ["город Бишкек"]))
         # Пустые и пробельные варианты не должны засчитывать что попало
         self.assertFalse(answer_matches("Ош", "Бишкек", ["", "   "]))
+
+
+def q(text="Вопрос?", answer="Ответ", points=1, alt=None):
+    return {"text": text, "answer": answer, "points": points, "alt_answers": alt or []}
+
+
+class AIDraftTests(APITestCase):
+    """Разбор ответа модели: что бы она ни прислала, редактор должен получить годную заготовку."""
+
+    def test_random_collapses_categories_and_forces_one_point(self):
+        draft = ai._clean({
+            "title": "Бокс",
+            "format": "random",
+            "description": "",
+            "timer_duration": 45,
+            # В рандоме категорий нет, но модель могла их прислать — вопросы не теряем
+            "categories": [{"name": "Бокс", "questions": [q("Кто такой Майк Тайсон?", "чемпион", points=4)]}],
+            "questions": [q("Сколько раундов?", "12", points=5)],
+        })
+        self.assertEqual(draft["format"], "random")
+        self.assertEqual(draft["categories"], [])
+        self.assertEqual(len(draft["questions"]), 2)
+        self.assertEqual({x["points"] for x in draft["questions"]}, {1}, "в рандоме всё по одному баллу")
+        self.assertEqual(draft["timer_duration"], 45)
+
+    def test_classic_wraps_loose_questions_into_a_category(self):
+        draft = ai._clean({
+            "title": "Бокс",
+            "format": "classic",
+            "description": "",
+            "timer_duration": 60,
+            "categories": [],
+            "questions": [q("Кто такой Майк Тайсон?", "чемпион")],
+        })
+        self.assertEqual(len(draft["categories"]), 1)
+        self.assertEqual(draft["categories"][0]["name"], "Общая")
+        self.assertEqual(draft["questions"], [])
+
+    def test_strategic_keeps_points_but_clamps_them(self):
+        draft = ai._clean({
+            "title": "Своя игра",
+            "format": "strategic",
+            "description": "",
+            "timer_duration": 60,
+            "categories": [{"name": "IT", "questions": [q(points=3), q(points=9), q(points=0)]}],
+            "questions": [],
+        })
+        self.assertEqual([x["points"] for x in draft["categories"][0]["questions"]], [3, 5, 1])
+
+    def test_unknown_format_and_timer_fall_back(self):
+        draft = ai._clean({
+            "title": "",
+            "format": "викторина",
+            "description": "",
+            "timer_duration": 17,
+            "categories": [{"name": "Общая", "questions": [q()]}],
+            "questions": [],
+        })
+        self.assertEqual(draft["format"], "classic")
+        self.assertEqual(draft["timer_duration"], 60)
+        self.assertEqual(draft["title"], "Новая игра")
+
+    def test_question_cap_and_alt_answers_trimmed(self):
+        draft = ai._clean({
+            "title": "Много",
+            "format": "random",
+            "description": "",
+            "timer_duration": 60,
+            "categories": [],
+            "questions": [q(f"Вопрос {i}?", alt=[f"в{j}" for j in range(20)]) for i in range(ai.MAX_QUESTIONS + 15)],
+        })
+        self.assertEqual(len(draft["questions"]), ai.MAX_QUESTIONS)
+        self.assertEqual(len(draft["questions"][0]["alt_answers"]), 10)
+
+    def test_questions_without_text_or_answer_are_dropped(self):
+        draft = ai._clean({
+            "title": "Бокс",
+            "format": "random",
+            "description": "",
+            "timer_duration": 60,
+            "categories": [],
+            "questions": [q(), {"text": "  ", "answer": "x", "points": 1, "alt_answers": []}, {"text": "y", "answer": "", "points": 1, "alt_answers": []}],
+        })
+        self.assertEqual(len(draft["questions"]), 1)
+
+    def test_empty_result_is_an_error(self):
+        with self.assertRaises(ai.AIError):
+            ai._clean({"title": "Пусто", "format": "random", "description": "", "timer_duration": 60,
+                       "categories": [], "questions": []})
+
+
+class AIEndpointTests(APITestCase):
+    """Эндпоинт сборки: без ключа кнопки нет, короткое описание не принимается."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="author", password="pwd12345")
+        self.client.force_authenticate(self.user)
+
+    def test_availability_probe_is_not_throttled(self):
+        """Редактор спрашивает доступность при каждом открытии — это не должно съедать лимит."""
+        for _ in range(25):
+            self.assertEqual(self.client.get("/api/rooms/generate/").status_code, 200)
+
+    def test_requires_login(self):
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/api/rooms/generate/").status_code, 401)
+
+    @mock.patch.object(ai, "api_key", return_value="")
+    def test_without_key_feature_is_off(self, _key):
+        res = self.client.get("/api/rooms/generate/")
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.data["available"])
+
+        res = self.client.post("/api/rooms/generate/", {"prompt": "комната про бокс на 6 вопросов"}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("ANTHROPIC_API_KEY", res.data["detail"])
+
+    @mock.patch.object(ai, "api_key", return_value="test-key")
+    def test_too_short_prompt_is_refused_before_calling_the_model(self, _key):
+        with mock.patch("anthropic.Anthropic") as client:
+            res = self.client.post("/api/rooms/generate/", {"prompt": "ау"}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Опишите", res.data["detail"])
+        client.assert_not_called()
+
+    @mock.patch.object(ai, "api_key", return_value="test-key")
+    @mock.patch.object(ai, "generate_room")
+    def test_draft_is_returned_and_nothing_is_saved(self, gen, _key):
+        gen.return_value = {
+            "title": "Бокс", "format": "random", "description": "", "timer_duration": 60,
+            "categories": [], "questions": [q("Кто такой Майк Тайсон?", "чемпион")],
+        }
+        res = self.client.post("/api/rooms/generate/", {"prompt": "комната бокс на 6 вопросов"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["title"], "Бокс")
+        self.assertEqual(AORoom.objects.count(), 0, "заготовка в базу не попадает — её сохраняет автор")

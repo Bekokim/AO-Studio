@@ -137,6 +137,10 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    # Обращение к ИИ стоит денег и идёт долго — держим поток в разумных рамках.
+    # Ограничение действует только там, где указан throttle_scope
+    "DEFAULT_THROTTLE_RATES": {"ai": os.environ.get("AI_RATE", "20/hour")},
 }
 
 SIMPLE_JWT = {
@@ -149,6 +153,11 @@ SIMPLE_JWT = {
 # Вход через Google: OAuth Client ID (тип «Web application») из Google Cloud Console.
 # Пусто — кнопка Google на сайте не показывается.
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+# Сборка комнаты по описанию (rooms/ai.py). Ключ задаётся в окружении; без него
+# кнопка в редакторе просто не показывается. Таймаут держим ниже лимита функции
+# Vercel (maxDuration в vercel.json), чтобы вернуть понятную ошибку, а не обрыв.
+AI_TIMEOUT = float(os.environ.get("AI_TIMEOUT", "50"))
 # Окно входа Google общается с сайтом через window.opener — строгий "same-origin" его ломает (белое окно)
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 

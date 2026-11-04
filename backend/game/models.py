@@ -87,6 +87,13 @@ class Team(models.Model):
         "Participant", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
         verbose_name="отвечающий",
     )
+    # Кого капитан наметил на следующий вопрос, пока идёт текущий. Подменять отвечающего
+    # посреди вопроса нельзя — это способ тянуть время, поэтому выбор ждёт здесь и
+    # вступает в силу, когда ведущий откроет следующий вопрос
+    next_answerer = models.ForeignKey(
+        "Participant", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+        verbose_name="отвечающий со следующего вопроса",
+    )
     # Античит: счётчик нарушений, дисквалификация и момент последней связи с устройством
     warnings = models.PositiveIntegerField("предупреждения", default=0)
     disqualified = models.BooleanField("дисквалифицирована", default=False)

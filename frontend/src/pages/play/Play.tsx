@@ -78,6 +78,11 @@ function Roster({ team, meId }: { team: Team; meId: number }) {
           {p.is_answerer && !p.disqualified && (
             <span className="shrink-0 rounded-md bg-green/15 px-1.5 py-0.5 text-[11px] font-bold text-green">отвечает</span>
           )}
+          {p.is_next_answerer && !p.is_answerer && !p.disqualified && (
+            <span className="shrink-0 rounded-md bg-yellow-400/15 px-1.5 py-0.5 text-[11px] font-bold text-yellow-400">
+              следующий
+            </span>
+          )}
           {p.disqualified && <Ban size={14} className="shrink-0 text-red-400" />}
         </div>
       ))}
@@ -90,11 +95,31 @@ function Roster({ team, meId }: { team: Team; meId: number }) {
   )
 }
 
-/** Капитан назначает, кто пишет ответы. До старта — это и есть готовность команды */
-function AnswererPicker({ code, team, compact, onDone }: { code: string; team: Team; compact?: boolean; onDone?: () => void }) {
+/**
+ * Капитан выбирает из состава того, кто пишет ответы.
+ *
+ * До старта это и есть готовность команды. В игре список доступен всегда: пока открыт
+ * текущий вопрос, подменить отвечающего нельзя (это тянуло бы время), поэтому выбор
+ * запоминается и вступает в силу на следующем вопросе — об этом и говорит подпись.
+ */
+function AnswererPicker({
+  code,
+  team,
+  meId,
+  queues,
+  onDone,
+}: {
+  code: string
+  team: Team
+  meId: number
+  /** Сейчас идёт вопрос — выбор достанется следующему */
+  queues?: boolean
+  onDone?: () => void
+}) {
   const [saving, setSaving] = useState<number | null>(null)
   const [error, setError] = useState('')
   const list = (team.participants ?? []).filter((p) => !p.disqualified)
+  const out = (team.participants ?? []).filter((p) => p.disqualified)
 
   const choose = async (p: Participant) => {
     setSaving(p.id)
@@ -111,28 +136,52 @@ function AnswererPicker({ code, team, compact, onDone }: { code: string; team: T
 
   return (
     <div>
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted">
-        <Pencil size={13} /> {compact ? 'Сменить отвечающего' : 'Кто пишет ответы'}
+      <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted">
+        <Pencil size={13} /> {queues ? 'Кто отвечает на следующий вопрос' : 'Кто пишет ответы'}
       </div>
+      <p className="mb-2.5 text-xs text-muted">
+        {queues
+          ? 'Сейчас идёт вопрос — выбор вступит в силу, когда ведущий откроет следующий.'
+          : 'Выберите участника из состава команды.'}
+      </p>
       <div className="space-y-1.5">
-        {list.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => choose(p)}
-            disabled={saving !== null}
-            className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition ${
-              p.is_answerer ? 'border-green bg-green/10' : 'border-line hover:border-green/60'
-            }`}
-          >
-            <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
-            {saving === p.id ? (
-              <Loader2 size={15} className="shrink-0 animate-spin text-green" />
-            ) : p.is_answerer ? (
-              <Check size={15} className="shrink-0 text-green" />
-            ) : null}
-          </button>
-        ))}
+        {list.map((p) => {
+          const picked = queues ? p.is_next_answerer || (!team.next_answerer_id && p.is_answerer) : p.is_answerer
+          return (
+            <button
+              key={p.id}
+              onClick={() => choose(p)}
+              disabled={saving !== null}
+              className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                picked ? 'border-green bg-green/10' : 'border-line hover:border-green/60'
+              }`}
+            >
+              <span className="min-w-0 flex-1 truncate font-semibold">
+                {p.name}
+                {p.id === meId && <span className="ml-1.5 text-xs font-normal text-muted">— это вы</span>}
+              </span>
+              {p.is_captain && (
+                <span title="Капитан" className="shrink-0 text-yellow-400">
+                  <Crown size={12} fill="currentColor" />
+                </span>
+              )}
+              {p.is_answerer && queues && (
+                <span className="shrink-0 text-[11px] font-semibold text-muted">сейчас</span>
+              )}
+              {saving === p.id ? (
+                <Loader2 size={15} className="shrink-0 animate-spin text-green" />
+              ) : picked ? (
+                <Check size={15} className="shrink-0 text-green" />
+              ) : null}
+            </button>
+          )
+        })}
       </div>
+      {out.length > 0 && (
+        <div className="mt-2 text-xs text-muted">
+          Вне зачёта и выбрать нельзя: {out.map((p) => p.name).join(', ')}
+        </div>
+      )}
       {error && <div className="mt-2 text-sm text-red-400">{error}</div>}
     </div>
   )
@@ -487,8 +536,10 @@ export default function Play() {
   const canAnswer =
     me.is_answerer && state.view === 'question' && state.accepting && q && (!state.answer_team || state.answer_team === myTeam.id)
   const teamDq = !!myTeam.disqualified && !ac.disqualified
-  // Отвечающего капитан меняет между вопросами: пока вопрос открыт, это был бы способ тянуть время
-  const canSwitchAnswerer = me.is_captain && !finished && state.view !== 'question' && !myTeam.disqualified
+  // Список состава капитану доступен всегда. Во время вопроса выбор не подменяет отвечающего
+  // сразу (это тянуло бы время), а ждёт следующего вопроса — см. AnswererPicker
+  const canSwitchAnswerer = me.is_captain && !finished && !myTeam.disqualified && !ac.disqualified
+  const pickerQueues = state.view === 'question'
 
   return (
     <div className="relative min-h-screen pb-10">
@@ -640,7 +691,7 @@ export default function Play() {
 
                   {me.is_captain && (
                     <div className="mt-5">
-                      <AnswererPicker code={upper} team={myTeam} onDone={refresh} />
+                      <AnswererPicker code={upper} team={myTeam} meId={me.id} onDone={refresh} />
                     </div>
                   )}
 
@@ -689,8 +740,7 @@ export default function Play() {
                   <LockedScreen team={myTeam} meId={me.id} answerer={answerer} />
                   {canSwitchAnswerer && (
                     <div className="glass mt-4 rounded-3xl p-5">
-                      <AnswererPicker code={upper} team={myTeam} compact onDone={refresh} />
-                      <p className="mt-2 text-xs text-muted">Поменять можно между вопросами, пока следующий не открыт.</p>
+                      <AnswererPicker code={upper} team={myTeam} meId={me.id} queues={pickerQueues} onDone={refresh} />
                     </div>
                   )}
                 </div>
@@ -776,10 +826,10 @@ export default function Play() {
           </AnimatePresence>
         )}
 
-        {/* Капитан-отвечающий меняет сменщика, не покидая игрового экрана */}
-        {!finished && !inLobby && me.is_answerer && canSwitchAnswerer && !ac.disqualified && (
+        {/* Капитан-отвечающий передаёт очередь, не покидая игрового экрана */}
+        {!finished && !inLobby && me.is_answerer && canSwitchAnswerer && (
           <div className="glass mt-4 rounded-3xl p-5">
-            <AnswererPicker code={upper} team={myTeam} compact onDone={refresh} />
+            <AnswererPicker code={upper} team={myTeam} meId={me.id} queues={pickerQueues} onDone={refresh} />
           </div>
         )}
 

@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from rooms.models import AORoom
 
-from .live import PARTICIPANTS_DQ_ALLOWED, WARNINGS_ALLOWED, answer_matches
+from .live import PARTICIPANTS_DQ_ALLOWED, WARNINGS_ALLOWED, answer_matches, apply_next_answerers
 from .models import Answer, GameSession, Participant, Team, generate_code
 from .serializers import (
     GameSessionSerializer,
@@ -117,7 +117,14 @@ class GameStateView(APIView):
         serializer = StateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        session.state = data["state"]
+        # Новый вопрос — вступают в силу замены, намеченные капитанами во время прошлого
+        prev_q = ((session.state or {}).get("question") or {}).get("id")
+        new_state = data["state"]
+        new_q = (new_state.get("question") or {}).get("id")
+        if new_state.get("view") == "question" and new_q and new_q != prev_q:
+            apply_next_answerers(session)
+
+        session.state = new_state
         session.state_version += 1
         fields = ["state", "state_version"]
         if data["state"].get("view") not in ("grid", "tiles") and session.pick:
@@ -233,6 +240,7 @@ class GameAnticheatView(APIView):
                             "name": p.name,
                             "is_captain": p.is_captain,
                             "is_answerer": t.answerer_id == p.id,
+                            "is_next_answerer": t.next_answerer_id == p.id,
                             "warnings": p.warnings,
                             "disqualified": p.disqualified,
                             "dq_reason": p.dq_reason,

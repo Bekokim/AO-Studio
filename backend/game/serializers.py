@@ -5,16 +5,20 @@ from .models import GameSession, Participant, Team
 
 class ParticipantSerializer(serializers.ModelSerializer):
     is_answerer = serializers.SerializerMethodField()
+    is_next_answerer = serializers.SerializerMethodField()
 
     class Meta:
         model = Participant
         fields = [
-            "id", "name", "is_captain", "is_answerer",
+            "id", "name", "is_captain", "is_answerer", "is_next_answerer",
             "warnings", "disqualified", "dq_reason",
         ]
 
     def get_is_answerer(self, obj):
         return obj.team.answerer_id == obj.id
+
+    def get_is_next_answerer(self, obj):
+        return obj.team.next_answerer_id == obj.id
 
 
 class TeamSerializer(serializers.ModelSerializer):
@@ -26,7 +30,7 @@ class TeamSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "color", "score", "warnings", "disqualified", "dq_reason",
             # Состав: сколько заявил капитан, кто пишет ответы и готова ли команда
-            "size", "answerer", "ready", "participants",
+            "size", "answerer", "next_answerer", "ready", "participants",
         ]
 
 
