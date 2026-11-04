@@ -3,11 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, FolderPlus, Globe, Loader2, Lock, Trash2 } from '../lib/icons'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import AiRoomPrompt from '../components/AiRoomPrompt'
 import Modal from '../components/Modal'
 import QuestionList, { newQuestion, type QDraft } from '../components/QuestionEditor'
 import { api, errorMessage } from '../lib/api'
-import type { AiQuestionDraft, AiRoomDraft, GameFormat, Question, RoomDetail } from '../lib/types'
+import type { GameFormat, Question, RoomDetail } from '../lib/types'
 import { FORMATS, uid } from '../lib/utils'
 import { useAuth } from '../store/auth'
 
@@ -32,19 +31,6 @@ function toDraft(q: Question): QDraft {
     points: q.points,
     photoFile: null,
     photoUrl: q.photo,
-    removePhoto: false,
-  }
-}
-
-function aiToDraft(q: AiQuestionDraft): QDraft {
-  return {
-    key: uid(),
-    text: q.text,
-    answer: q.answer,
-    altAnswers: q.alt_answers ?? [],
-    points: q.points,
-    photoFile: null,
-    photoUrl: null,
     removePhoto: false,
   }
 }
@@ -83,17 +69,6 @@ export default function CreateRoom() {
   const [isPublic, setIsPublic] = useState(true)
   const [timer, setTimer] = useState(60)
   const [description, setDescription] = useState('')
-  // Сборка по описанию: кнопку показываем, только если у сервера есть ключ
-  const [ai, setAi] = useState<{ available: boolean; max_questions: number } | null>(null)
-
-  // Новая комната — спрашиваем, доступна ли сборка по описанию
-  useEffect(() => {
-    if (editId) return
-    api
-      .get<{ available: boolean; max_questions: number }>('/rooms/generate/')
-      .then(({ data }) => setAi(data))
-      .catch(() => setAi(null))
-  }, [editId])
 
   // Режим редактирования — загружаем комнату
   useEffect(() => {
@@ -128,26 +103,6 @@ export default function CreateRoom() {
       if (filled.length) setCategories([{ key: uid(), name: 'Общая', questions: filled }])
     }
     setFormat(f)
-  }
-
-  /** Заготовка от ИИ: раскладываем её по полям редактора и ведём автора проверять вопросы */
-  const applyDraft = (d: AiRoomDraft) => {
-    setTitle(d.title)
-    setFormat(d.format)
-    setDescription(d.description)
-    setTimer(TIMERS.includes(d.timer_duration) ? d.timer_duration : 60)
-    if (d.format === 'random') {
-      setCategories([])
-      setQuestions(d.questions.length ? d.questions.map(aiToDraft) : [newQuestion()])
-    } else {
-      setQuestions([newQuestion()])
-      setCategories(d.categories.map((c) => ({ key: uid(), name: c.name, questions: c.questions.map(aiToDraft) })))
-    }
-    setError('')
-    setShowErrors(false)
-    setDir(1)
-    setStep(1)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const addCategory = (e?: FormEvent) => {
@@ -306,7 +261,6 @@ export default function CreateRoom() {
         >
           {step === 0 && (
             <div className="space-y-8">
-              {ai?.available && <AiRoomPrompt maxQuestions={ai.max_questions} onDraft={applyDraft} />}
               <label className="block">
                 <span className="mb-2 block font-semibold">Название игры</span>
                 <input

@@ -10,7 +10,6 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import ai
 from .models import AORoom, Category, Question
 from .serializers import (
     CategorySerializer,
@@ -264,30 +263,6 @@ class CategoryViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         return Category.objects.filter(room__author=self.request.user)
-
-
-class RoomGenerateView(APIView):
-    """Собирает заготовку комнаты по описанию. Ничего не сохраняет — правит её автор."""
-
-    permission_classes = [permissions.IsAuthenticated]
-    # Обращение к модели стоит денег, поэтому держим поток в рамках
-    throttle_scope = "ai"
-
-    def get_throttles(self):
-        # Лимит — только на саму сборку. Проверку доступности редактор делает при каждом
-        # открытии, и считать её в тот же счёт значило бы спрятать кнопку у частого автора
-        return super().get_throttles() if self.request.method == "POST" else []
-
-    def get(self, request):
-        """Редактор спрашивает, показывать ли кнопку сборки."""
-        return Response({"available": ai.available(), "max_questions": ai.MAX_QUESTIONS})
-
-    def post(self, request):
-        try:
-            draft = ai.generate_room(str(request.data.get("prompt", "")))
-        except ai.AIError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(draft)
 
 
 class PlatformStatsView(APIView):

@@ -232,23 +232,6 @@ export interface LiveAnswer {
   submitted_at: string
 }
 
-/** Заготовка комнаты, собранная ИИ по описанию. В базу не сохраняется — едет в редактор */
-export interface AiRoomDraft {
-  title: string
-  format: GameFormat
-  description: string
-  timer_duration: number
-  categories: { name: string; questions: AiQuestionDraft[] }[]
-  questions: AiQuestionDraft[]
-}
-
-export interface AiQuestionDraft {
-  text: string
-  answer: string
-  alt_answers: string[]
-  points: number
-}
-
 export interface PlatformStats {
   users: number
   rooms: number
