@@ -44,7 +44,7 @@ export default function Scoreboard({ teams, activeId, onAdjust, compact }: Props
               <div className="relative flex items-center gap-3">
                 <span className="w-5 text-center text-sm font-bold text-muted">
                   {t.disqualified ? (
-                    <span title="Дисквалифицирована">
+                    <span title="Команде бан">
                       <Ban size={14} className="mx-auto text-red-400" />
                     </span>
                   ) : (
@@ -55,7 +55,7 @@ export default function Scoreboard({ teams, activeId, onAdjust, compact }: Props
                 <span className={`min-w-0 flex-1 truncate font-semibold ${compact ? 'text-sm' : ''}`}>
                   {active && !t.disqualified && <Crown size={16} className="mr-1 inline -translate-y-0.5 text-yellow-400" fill="currentColor" />}
                   {t.name}
-                  {t.disqualified && <span className="ml-1.5 text-xs font-semibold text-red-400">ДК</span>}
+                  {t.disqualified && <span className="ml-1.5 text-xs font-semibold text-red-400">бан</span>}
                 </span>
                 {onAdjust && !t.disqualified && (
                   <div className="host-only flex gap-0.5">

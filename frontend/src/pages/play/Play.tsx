@@ -45,7 +45,7 @@ function Standings({ teams, meId }: { teams: Team[]; meId?: number }) {
           </span>
           <span className="min-w-0 flex-1">
             <TeamChip team={t} />
-            {t.disqualified && <span className="ml-1.5 text-xs font-semibold text-red-400">вне зачёта</span>}
+            {t.disqualified && <span className="ml-1.5 text-xs font-semibold text-red-400">бан</span>}
           </span>
           <span className={`text-lg font-extrabold tabular-nums ${t.disqualified ? 'text-muted line-through' : ''}`}>{t.score}</span>
         </motion.div>
@@ -179,7 +179,7 @@ function AnswererPicker({
       </div>
       {out.length > 0 && (
         <div className="mt-2 text-xs text-muted">
-          Вне зачёта и выбрать нельзя: {out.map((p) => p.name).join(', ')}
+          В бане, выбрать нельзя: {out.map((p) => p.name).join(', ')}
         </div>
       )}
       {error && <div className="mt-2 text-sm text-red-400">{error}</div>}
@@ -238,17 +238,17 @@ function ArmGate({ warnings, allowed, onArm }: { warnings: number; allowed: numb
         <li className="flex gap-2">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-yellow-400" />
           {allowed > 0
-            ? 'Первый уход с экрана — предупреждение, следующий — вы вне зачёта.'
-            : 'Любой уход с экрана — вы вне зачёта.'}
+            ? 'Первый уход с экрана — предупреждение, второй — бан.'
+            : 'Любой уход с экрана — бан.'}
         </li>
         <li className="flex gap-2">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-yellow-400" />
-          Двое выбывших из команды — и команда снимается с игры.
+          Забанили двоих из команды — бан всей команде.
         </li>
       </ul>
       {returning && (
         <div className="mt-5 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 px-4 py-3 text-sm font-semibold text-yellow-400">
-          У вас {warnings} из {allowed + 1} нарушений. Ещё одно — и вы вне зачёта.
+          У вас {warnings} из {allowed + 1} нарушений. Ещё одно — бан.
         </div>
       )}
       <button onClick={onArm} className="btn btn-primary mt-6 w-full py-3.5 text-base">
@@ -567,7 +567,7 @@ export default function Play() {
           <span
             title={
               ac.disqualified
-                ? 'Вы вне зачёта'
+                ? 'Вам бан'
                 : ac.warnings > 0
                   ? `Нарушений: ${ac.warnings} из ${(data.warnings_allowed ?? 1) + 1}`
                   : 'Защищённый режим включён'
@@ -592,7 +592,7 @@ export default function Play() {
               <AlertTriangle size={20} className="mt-0.5 shrink-0 text-yellow-400" />
               <div className="min-w-0 flex-1 text-sm">
                 <div className="font-bold text-yellow-400">Предупреждение {ac.warnings} из {(data.warnings_allowed ?? 1) + 1}</div>
-                <div className="mt-0.5 text-muted">{ac.lastWarning}. Ещё одно нарушение — и вы вне зачёта.</div>
+                <div className="mt-0.5 text-muted">{ac.lastWarning}. Ещё одно нарушение — бан.</div>
               </div>
               <button onClick={ac.dismiss} className="shrink-0 rounded-lg p-1 text-muted hover:text-fg" aria-label="Скрыть">
                 <X size={16} />
@@ -624,17 +624,17 @@ export default function Play() {
 
         {!finished && ac.disqualified ? (
           <DqScreen
-            title="Вы вне зачёта"
+            title="Вам бан"
             reason={ac.dqReason}
-            note="Вы больше не можете отвечать и выбирать вопросы. Команда играет дальше, но если выбудет ещё один участник — её снимут. Если это ошибка, подойдите к ведущему: он может вернуть вас в игру."
+            note="Отвечать и выбирать вопросы вы больше не можете. Команда играет дальше, но если забанят ещё одного — бан получит вся команда. Если это ошибка, подойдите к ведущему: он отменит бан."
             teams={data.teams}
             meTeamId={myTeam.id}
           />
         ) : !finished && teamDq ? (
           <DqScreen
-            title="Команда снята с игры"
+            title="Команде бан"
             reason={myTeam.dq_reason ?? ''}
-            note="Ответы больше не принимаются, баллы заморожены. Если это ошибка — подойдите к ведущему: он может вернуть команду в игру."
+            note="Ответы больше не принимаются, баллы заморожены. Если это ошибка — подойдите к ведущему: он отменит бан."
             teams={data.teams}
             meTeamId={myTeam.id}
           />
@@ -708,8 +708,8 @@ export default function Play() {
                       </div>
                       <p className="mt-1.5 text-muted">
                         После старта игра развернётся на весь экран у каждого. Нельзя сворачивать её, переключаться
-                        на другие вкладки и приложения: первый раз — предупреждение, второй — вы вне зачёта. Двое
-                        выбывших — и команду снимают с игры. Отключите уведомления и не принимайте звонки.
+                        на другие вкладки и приложения: первый раз — предупреждение, второй — бан. Забанят двоих
+                        из команды — бан всей команде. Отключите уведомления и не принимайте звонки.
                       </p>
                     </div>
                   )}

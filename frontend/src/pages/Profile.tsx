@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Camera, Loader2, LogOut, Mail, Pencil, Plus, Puzzle, Trash2, Trophy } from '../lib/icons'
+import { Camera, FolderOpen, Loader2, LogOut, Mail, Pencil, Plus, Puzzle, Trash2, Trophy } from '../lib/icons'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../components/Avatar'
@@ -187,45 +187,62 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 md:py-10">
-      {/* Шапка профиля в стиле GitHub */}
+      {/* Шапка профиля */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass relative overflow-hidden rounded-3xl">
-        <div className="h-28 bg-gradient-to-r from-green-dark/60 via-green/40 to-green-light/30 sm:h-36" />
-        <div className="flex flex-col gap-5 px-6 pb-6 sm:flex-row sm:items-end sm:px-8">
-          <div className="-mt-14 sm:-mt-16">
-            <div className="rounded-full bg-bg p-1.5">
-              <Avatar name={user.username} src={user.avatar} size={120} />
+        {/* Обложка — то же мягкое свечение, что и на остальных страницах, а не плоская заливка */}
+        <div className="relative h-24 sm:h-28">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-dark/45 via-green/25 to-transparent" />
+          <div
+            className="absolute inset-0"
+            style={{ background: 'radial-gradient(420px 170px at 18% 130%, rgba(16,185,129,0.35), transparent 70%)' }}
+          />
+        </div>
+
+        <div className="px-5 pb-5 sm:px-8 sm:pb-6">
+          {/* В строку — только когда места хватает и имени, и обеим кнопкам: на средних
+              ширинах имя иначе ужималось до многоточия */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+            {/* Аватар заходит на обложку; подложка в цвет карточки, без жёсткого кольца */}
+            <div className="-mt-14 w-fit shrink-0 rounded-full p-1 sm:-mt-16"
+              style={{ background: 'var(--surface)', boxShadow: '0 0 0 1px var(--line), 0 12px 32px rgba(16,185,129,0.22)' }}
+            >
+              <Avatar name={user.username} src={user.avatar} size={104} />
             </div>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-2xl font-extrabold sm:text-3xl">{user.username}</h1>
-            <p className="mt-1 flex items-center gap-1.5 truncate text-muted">
-              <Mail size={15} /> {user.email}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => setEditOpen(true)} className="btn btn-ghost">
-              <Pencil size={16} /> Редактировать профиль
-            </button>
-            <button onClick={doLogout} className="btn btn-ghost">
-              <LogOut size={16} /> Выйти
-            </button>
+
+            <div className="min-w-0 flex-1 lg:pb-1">
+              <h1 className="truncate text-2xl font-extrabold sm:text-3xl">{user.username}</h1>
+              <p className="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-muted">
+                <Mail size={15} className="shrink-0" />
+                <span className="truncate">{user.email}</span>
+              </p>
+            </div>
+
+            <div className="flex shrink-0 gap-2 lg:pb-1">
+              <button onClick={() => setEditOpen(true)} className="btn btn-ghost flex-1 lg:flex-none">
+                <Pencil size={16} /> Редактировать
+              </button>
+              <button onClick={doLogout} className="btn btn-ghost flex-1 lg:flex-none">
+                <LogOut size={16} /> Выйти
+              </button>
+            </div>
           </div>
         </div>
+
         <div className="grid grid-cols-2 border-t border-line">
-          <div className="flex items-center justify-center gap-3 border-r border-line py-5">
-            <Puzzle className="text-green" />
-            <div>
-              <div className="text-2xl font-extrabold">{user.rooms_count}</div>
-              <div className="text-xs text-muted">создано AO комнат</div>
+          {[
+            { icon: Puzzle, value: user.rooms_count, label: 'создано AO комнат' },
+            { icon: Trophy, value: user.games_played, label: 'сыграно игр' },
+          ].map(({ icon: Icon, value, label }, i) => (
+            <div key={label} className={`flex items-center gap-3 px-5 py-4 sm:px-8 ${i === 0 ? 'border-r border-line' : ''}`}>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green/10">
+                <Icon size={18} className="text-green" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-xl font-extrabold leading-none tabular-nums">{value}</div>
+                <div className="mt-1 truncate text-xs text-muted">{label}</div>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center justify-center gap-3 py-5">
-            <Trophy className="text-green" />
-            <div>
-              <div className="text-2xl font-extrabold">{user.games_played}</div>
-              <div className="text-xs text-muted">сыграно игр</div>
-            </div>
-          </div>
+          ))}
         </div>
       </motion.div>
 
@@ -244,8 +261,10 @@ export default function Profile() {
           <Loader2 className="animate-spin" />
         </div>
       ) : rooms.length === 0 ? (
-        <div className="glass rounded-3xl py-16 text-center">
-          <div className="text-5xl">📭</div>
+        <div className="glass rounded-3xl py-14 text-center">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green/10">
+            <FolderOpen size={30} className="text-green" />
+          </span>
           <h3 className="mt-4 text-lg font-bold">У вас пока нет AO комнат</h3>
           <p className="mt-1 text-muted">Создайте первую игру — это займёт пару минут</p>
           <button onClick={() => navigate('/create')} className="btn btn-primary mt-6">
