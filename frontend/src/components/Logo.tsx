@@ -49,6 +49,19 @@ export default function Logo({ size = 36 }: { size?: number }) {
       </defs>
 
       <rect width="48" height="48" rx="13" fill={`url(#${gradId})`} mask={`url(#${maskId})`} />
+      {/* Кромка — намёк на оправу. Непрерывная линия вдоль силуэта переживает уменьшение:
+          деталь внутри плашки на 32 px превращается в шум, а она читается даже там */}
+      <rect
+        x="2.6"
+        y="2.6"
+        width="42.8"
+        height="42.8"
+        rx="11"
+        fill="none"
+        stroke="#fff"
+        strokeOpacity="0.38"
+        strokeWidth="1.6"
+      />
     </svg>
   )
 }

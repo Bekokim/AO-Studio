@@ -13,4 +13,7 @@
     </mask>
   </defs>
   <rect width="48" height="48" rx="13" fill="url(#g)" mask="url(#m)"/>
+  <!-- Кромка: та же, что в Logo.tsx -->
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11" fill="none"
+        stroke="#fff" stroke-opacity="0.38" stroke-width="1.6"/>
 </svg>
