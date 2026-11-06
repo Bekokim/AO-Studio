@@ -57,6 +57,9 @@ import {
   Logout01Icon,
   Mail01Icon,
   Maximize01Icon,
+  MedalFirstPlaceIcon,
+  MedalSecondPlaceIcon,
+  MedalThirdPlaceIcon,
   Minimize01Icon,
   MinusSignCircleIcon,
   MinusSignIcon,
@@ -143,6 +146,10 @@ export const Pause = icon(PauseIcon, 'Pause')
 export const Flag = icon(Flag01Icon, 'Flag')
 export const Crown = icon(CrownIcon, 'Crown')
 export const Trophy = icon(ChampionIcon, 'Trophy')
+// Медали пьедестала: в наборе есть отдельные значки под каждое место
+export const MedalFirst = icon(MedalFirstPlaceIcon, 'MedalFirst')
+export const MedalSecond = icon(MedalSecondPlaceIcon, 'MedalSecond')
+export const MedalThird = icon(MedalThirdPlaceIcon, 'MedalThird')
 export const Target = icon(TargetIcon, 'Target')
 export const Rocket = icon(RocketIcon, 'Rocket')
 export const Sparkles = icon(SparklesIcon, 'Sparkles')

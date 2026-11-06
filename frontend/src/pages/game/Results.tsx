@@ -1,6 +1,6 @@
 import confetti from 'canvas-confetti'
 import { motion } from 'framer-motion'
-import { Home, RotateCcw } from '../../lib/icons'
+import { Home, MedalFirst, MedalSecond, MedalThird, RotateCcw } from '../../lib/icons'
 import { useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
@@ -9,10 +9,12 @@ import { sounds } from '../../lib/sounds'
 import { useGame } from '../../store/game'
 import { useUI } from '../../store/ui'
 
+// Медали — значки набора, а не смайлы: цвет металла задаём сами, чтобы он не зависел
+// от того, как эмодзи рисует система. Серебро взято потемнее: светлое терялось на белом фоне
 const PODIUM = [
-  { place: 2, height: 'h-32 sm:h-40', medal: '🥈', delay: 0.6 },
-  { place: 1, height: 'h-44 sm:h-56', medal: '🥇', delay: 1.0 },
-  { place: 3, height: 'h-24 sm:h-28', medal: '🥉', delay: 0.3 },
+  { place: 2, height: 'h-32 sm:h-40', Medal: MedalSecond, color: '#94a3b8', delay: 0.6 },
+  { place: 1, height: 'h-44 sm:h-56', Medal: MedalFirst, color: '#fbbf24', delay: 1.0 },
+  { place: 3, height: 'h-24 sm:h-28', Medal: MedalThird, color: '#d08a52', delay: 0.3 },
 ]
 
 export default function Results() {
@@ -71,7 +73,7 @@ export default function Results() {
 
         {/* Пьедестал */}
         <div className="mt-12 flex items-end justify-center gap-3 sm:gap-5">
-          {PODIUM.map(({ place, height, medal, delay }) => {
+          {PODIUM.map(({ place, height, Medal, color, delay }) => {
             const t = ranked[place - 1]
             if (!t) return <div key={place} className="w-28 sm:w-40" />
             return (
@@ -82,7 +84,11 @@ export default function Results() {
                   transition={{ delay: delay + 0.4, type: 'spring', damping: 10 }}
                   className="mb-3 flex flex-col items-center"
                 >
-                  <span className={place === 1 ? 'text-6xl' : 'text-5xl'}>{medal}</span>
+                  <Medal
+                    size={place === 1 ? 56 : 46}
+                    style={{ color }}
+                    className="drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
+                  />
                   <span className="mt-2 line-clamp-2 text-center font-bold" style={{ color: t.color }}>
                     {t.name}
                   </span>
