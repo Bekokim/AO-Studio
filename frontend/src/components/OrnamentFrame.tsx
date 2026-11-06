@@ -23,6 +23,31 @@ const CORNERS = [
   [0, 100, 270],
 ] as const
 
+/**
+ * Тот же мотив разделителем — для экранов, где рамку не натянешь: они не квадратные.
+ *
+ * Завитки нарисованы в SVG постоянного размера, а линии по бокам тянутся обычным flex.
+ * Так мотив не растягивается вместе с шириной экрана и остаётся самим собой.
+ */
+export function OrnamentDivider({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex w-full max-w-md items-center gap-4 ${className}`} aria-hidden="true">
+      <span className="h-px flex-1 bg-gradient-to-r from-transparent to-green/50" />
+      {/* Путь задан прямо здесь, а не через <use>: разделитель ставится на экранах без рамки,
+          и ссылаться там было бы не на что */}
+      <svg width="110" height="28" viewBox="0 0 110 28" fill="none" stroke="var(--green)" strokeLinecap="round">
+        <g strokeWidth="2" strokeOpacity="0.9">
+          {/* Две встречные спирали, между ними ромб — как в углах рамки */}
+          <path d={CURL} transform="translate(2 5) scale(1.45)" />
+          <path d={CURL} transform="translate(108 5) scale(-1.45 1.45)" />
+        </g>
+        <path d="M55 9L60 14L55 19L50 14Z" fill="var(--green)" fillOpacity="0.8" stroke="none" />
+      </svg>
+      <span className="h-px flex-1 bg-gradient-to-l from-transparent to-green/50" />
+    </div>
+  )
+}
+
 export default function OrnamentFrame({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div className={`relative inline-block p-[34px] sm:p-[39px] ${className}`}>

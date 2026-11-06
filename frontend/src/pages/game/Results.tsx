@@ -4,6 +4,7 @@ import { Home, RotateCcw } from '../../lib/icons'
 import { useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
+import { OrnamentDivider } from '../../components/OrnamentFrame'
 import { sounds } from '../../lib/sounds'
 import { useGame } from '../../store/game'
 import { useUI } from '../../store/ui'
@@ -65,6 +66,7 @@ export default function Results() {
           <Logo size={48} />
           <h1 className="mt-4 text-4xl font-extrabold sm:text-5xl">Итоги игры</h1>
           <p className="mt-2 text-muted">{room.title}</p>
+          <OrnamentDivider className="mt-5" />
         </motion.div>
 
         {/* Пьедестал */}
