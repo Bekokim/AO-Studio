@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import FormatBadge from '../../components/FormatBadge'
 import Logo from '../../components/Logo'
+import OrnamentFrame from '../../components/OrnamentFrame'
 import { api, errorMessage } from '../../lib/api'
 import type { GameSession } from '../../lib/types'
 import { plural } from '../../lib/utils'
@@ -116,9 +117,11 @@ export default function Lobby() {
             <div className="mt-2 select-all font-mono text-6xl font-extrabold tracking-[0.2em] sm:text-8xl">{code}</div>
 
             {qr && (
-              <div className="mt-8 rounded-2xl bg-white p-3 shadow-[0_0_40px_rgba(16,185,129,0.3)]">
-                <img src={qr} alt="QR-код для входа в игру" className="h-48 w-48 sm:h-56 sm:w-56" />
-              </div>
+              <OrnamentFrame className="mt-5">
+                <div className="rounded-2xl bg-white p-3 shadow-[0_0_40px_rgba(16,185,129,0.25)]">
+                  <img src={qr} alt="QR-код для входа в игру" className="h-48 w-48 sm:h-56 sm:w-56" />
+                </div>
+              </OrnamentFrame>
             )}
             <div className="mt-3 text-sm text-muted">или наведите камеру на QR-код</div>
 
