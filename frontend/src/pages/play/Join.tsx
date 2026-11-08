@@ -1,4 +1,5 @@
 import { tr } from '../../lib/i18n'
+import PatternBackground from '../../components/PatternBackground'
 import { motion } from 'framer-motion'
 import { ArrowRight, Check, Crown, Loader2, Users } from '../../lib/icons'
 import { useEffect, useState, type FormEvent } from 'react'
@@ -103,7 +104,7 @@ export default function Join() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="bg-aurora" />
+      <PatternBackground />
       <motion.form
         onSubmit={submit}
         initial={{ opacity: 0, y: 20 }}

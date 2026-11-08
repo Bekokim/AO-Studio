@@ -1,4 +1,5 @@
 import { tr } from '../../lib/i18n'
+import PatternBackground from '../../components/PatternBackground'
 import confetti from 'canvas-confetti'
 import { motion } from 'framer-motion'
 import { Home, MedalFirst, MedalSecond, MedalThird, RotateCcw } from '../../lib/icons'
@@ -63,7 +64,7 @@ export default function Results() {
 
   return (
     <div className="relative min-h-screen overflow-hidden px-4 py-10">
-      <div className="bg-aurora" />
+      <PatternBackground />
       <div className="relative z-10 mx-auto max-w-4xl">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center text-center">
           <Logo size={48} />

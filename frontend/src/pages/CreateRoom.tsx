@@ -1,7 +1,7 @@
 import { tr } from '../lib/i18n'
 import FormatIcon from '../components/FormatIcon'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, FolderPlus, Globe, Loader2, Lock, Trash2 } from '../lib/icons'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, FolderPlus, Globe, Loader2, Lock, Trash2 } from '../lib/icons'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Modal from '../components/Modal'
@@ -400,7 +400,9 @@ export default function CreateRoom() {
           {step === 2 && (
             <div className="space-y-5">
               <div className="glass rounded-2xl p-5">
-                <span className="mb-3 block font-semibold">{tr('⏱️ Таймер на вопрос')}</span>
+                <span className="mb-3 flex items-center gap-2 font-semibold">
+                  <Clock size={17} className="text-green" /> {tr('Таймер на вопрос')}
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {TIMERS.map((t) => (
                     <button

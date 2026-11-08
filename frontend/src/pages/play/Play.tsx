@@ -1,7 +1,8 @@
 import { tr } from '../../lib/i18n'
+import PatternBackground from '../../components/PatternBackground'
 import confetti from 'canvas-confetti'
 import { AnimatePresence, motion } from 'framer-motion'
-import { AlertTriangle, Ban, Check, CheckCircle2, Crown, Loader2, Lock, LockKeyhole, LogOut, Pencil, Send, ShieldCheck, Trophy, Users, Wifi, WifiOff, X } from '../../lib/icons'
+import { AlertTriangle, Ban, Check, CheckCircle2, Crown, Loader2, Lock, LockKeyhole, LogOut, Pencil, Search, Send, ShieldCheck, Trophy, Users, Wifi, WifiOff, X } from '../../lib/icons'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import CircularTimer from '../../components/game/CircularTimer'
@@ -512,7 +513,9 @@ export default function Play() {
   if (error === 'not_found') {
     return (
       <Centered>
-        <div className="text-5xl">🔍</div>
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green/10">
+          <Search size={28} className="text-green" />
+        </span>
         <h1 className="mt-3 text-xl font-bold">{tr('Игра не найдена')}</h1>
         <p className="mt-1 text-muted">{tr('Проверьте код у ведущего')}</p>
         <Link to="/join" className="btn btn-primary mt-6">{tr('Ввести другой код')}</Link>
@@ -534,7 +537,9 @@ export default function Play() {
     localStorage.removeItem(playerTokenKey(upper))
     return (
       <Centered>
-        <div className="text-5xl">🚪</div>
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-fg/5">
+          <LogOut size={28} className="text-muted" />
+        </span>
         <h1 className="mt-3 text-xl font-bold">{tr('Вы не в этой игре')}</h1>
         <p className="mt-1 text-muted">{tr('Возможно, ведущий убрал вашу команду из списка.')}</p>
         {data.status === 'lobby' && (
@@ -568,7 +573,7 @@ export default function Play() {
 
   return (
     <div className="relative min-h-screen pb-10">
-      <div className="bg-aurora" />
+      <PatternBackground />
 
       {/* Шапка: игра, моя команда и моя роль */}
       <header className="glass sticky top-0 z-20 flex items-center gap-3 rounded-none border-x-0 border-t-0 px-4 py-2.5">
@@ -872,7 +877,7 @@ export default function Play() {
 function Centered({ children, inline }: { children: React.ReactNode; inline?: boolean }) {
   return (
     <div className={`relative flex flex-col items-center justify-center px-4 text-center ${inline ? 'py-16' : 'min-h-screen'}`}>
-      {!inline && <div className="bg-aurora" />}
+      {!inline && <PatternBackground />}
       <div className="relative z-10 flex flex-col items-center">{children}</div>
     </div>
   )

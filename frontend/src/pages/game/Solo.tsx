@@ -1,7 +1,8 @@
 import confetti from 'canvas-confetti'
+import PatternBackground from '../../components/PatternBackground'
 import { tr } from '../../lib/i18n'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, Check, CheckCircle2, Flag, HelpCircle, Home, MinusCircle, RotateCcw, Send, Target, X, XCircle } from '../../lib/icons'
+import { ArrowRight, Check, CheckCircle2, Flag, HelpCircle, Home, MinusCircle, Rocket, RotateCcw, Send, Target, Trophy, X, XCircle } from '../../lib/icons'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import CircularTimer from '../../components/game/CircularTimer'
@@ -136,7 +137,7 @@ export default function Solo() {
 
   return (
     <div className="relative min-h-screen pb-12">
-      <div className="bg-aurora" />
+      <PatternBackground />
 
       <header className="glass sticky top-0 z-20 flex items-center gap-3 rounded-none border-x-0 border-t-0 px-4 py-2.5 sm:px-6">
         <Logo size={34} />
@@ -161,7 +162,18 @@ export default function Solo() {
       <main className="relative z-10 mx-auto max-w-5xl px-4 pt-6 sm:px-6">
         {finished ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass mx-auto max-w-2xl rounded-3xl p-6 text-center sm:p-10">
-            <div className="text-6xl">{correctCount === all.length ? '🏆' : correctCount >= all.length / 2 ? '🎉' : '💪'}</div>
+            {/* Значок по результату: кубок за полный проход, мишень за половину и больше,
+                ракета, когда есть куда расти. Цвет задаём сами — у смайлов он свой в каждой системе */}
+            {(() => {
+              const perfect = correctCount === all.length
+              const good = correctCount >= all.length / 2
+              const Icon = perfect ? Trophy : good ? Target : Rocket
+              return (
+                <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-green/10">
+                  <Icon size={40} style={{ color: perfect ? '#fbbf24' : 'var(--green)' }} />
+                </span>
+              )
+            })()}
             <h1 className="mt-4 text-3xl font-extrabold">{tr('Игра окончена!')}</h1>
             <div className="mt-6 grid grid-cols-3 gap-3">
               {[

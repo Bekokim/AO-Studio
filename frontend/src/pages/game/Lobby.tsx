@@ -1,4 +1,5 @@
 import { tr } from '../../lib/i18n'
+import PatternBackground from '../../components/PatternBackground'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, Copy, Crown, Loader2, LogOut, Pencil, Rocket, ShieldCheck, Sparkles, Users, X } from '../../lib/icons'
 import QRCode from 'qrcode'
@@ -96,7 +97,7 @@ export default function Lobby() {
 
   return (
     <div className="relative min-h-screen px-4 py-6 sm:px-8">
-      <div className="bg-aurora" />
+      <PatternBackground />
       <div className="relative z-10 mx-auto max-w-6xl">
         <header className="mb-8 flex items-center gap-3">
           <Logo size={38} />

@@ -199,7 +199,9 @@ export default function Rooms() {
         </div>
       ) : rooms.length === 0 ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-3xl py-20 text-center">
-          <div className="text-5xl">🔍</div>
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green/10">
+            <Search size={28} className="text-green" />
+          </span>
           <h3 className="mt-4 text-xl font-bold">{tr('Ничего не найдено')}</h3>
           <p className="mt-1 text-muted">
             {show === 'saved' ? tr('Вы ещё не сохранили ни одной комнаты') : tr('Попробуйте изменить запрос или фильтры')}

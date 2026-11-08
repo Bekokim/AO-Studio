@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import PatternBackground from '../PatternBackground'
 import { tr } from '../../lib/i18n'
 import { Flag, Keyboard, LogOut, Maximize, Minimize, MonitorPlay } from '../../lib/icons'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -55,7 +56,7 @@ export default function GameShell({ children, hotkeys, onFinish }: Props) {
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      <div className="bg-aurora" />
+      <PatternBackground />
 
       <header className="glass relative z-20 flex items-center gap-3 rounded-none border-x-0 border-t-0 px-4 py-2.5 sm:px-6">
         <Logo size={34} />

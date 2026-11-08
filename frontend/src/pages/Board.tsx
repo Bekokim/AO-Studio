@@ -113,7 +113,9 @@ export default function Board() {
           </div>
         ) : rooms.length === 0 ? (
           <div className="glass mt-6 rounded-3xl p-10 text-center">
-            <div className="text-5xl">🔍</div>
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green/10">
+              <Search size={28} className="text-green" />
+            </span>
             <p className="mt-3 font-bold">{tr('Игр не нашлось')}</p>
             <p className="mt-1 text-sm text-muted">{tr('Измените поиск или создайте свою игру в разделе «Создать АО».')}</p>
           </div>

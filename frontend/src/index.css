@@ -301,3 +301,77 @@ kbd {
 [data-theme='light'] .floating-emojis {
   opacity: 0.7;
 }
+
+/* Фон экранов без плавающих эмодзи — см. components/PatternBackground.tsx.
+   Плотность узора и яркость пятен разные по темам: на белом зелёное
+   проступает сильнее, чем на тёмно-синем, и одинаковые значения смотрелись бы
+   на светлой теме грязно. */
+.bg-ornament {
+  opacity: 0.085;
+  /* В середине узор сведён на нет: там вопрос и карточки */
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, transparent 35%, #000 85%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, transparent 35%, #000 85%);
+}
+[data-theme='light'] .bg-ornament {
+  opacity: 0.07;
+}
+
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.2;
+  /* Своим слоем: размытие рассчитывается один раз, дальше слой просто двигают */
+  will-change: transform;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+[data-theme='light'] .bg-blob {
+  opacity: 0.09;
+}
+.bg-blob-a {
+  width: 38vw;
+  height: 38vw;
+  min-width: 260px;
+  min-height: 260px;
+  left: -8vw;
+  top: -10vw;
+  background: var(--green);
+  animation-name: bg-drift-a;
+  animation-duration: 28s;
+}
+.bg-blob-b {
+  width: 32vw;
+  height: 32vw;
+  min-width: 220px;
+  min-height: 220px;
+  right: -7vw;
+  bottom: -9vw;
+  background: var(--green-light);
+  animation-name: bg-drift-b;
+  animation-duration: 36s;
+}
+@keyframes bg-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(5vw, 4vw);
+  }
+}
+@keyframes bg-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-4vw, -3vw);
+  }
+}
+/* Кому движение мешает — фон остаётся, но стоит на месте */
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob {
+    animation: none;
+  }
+}
