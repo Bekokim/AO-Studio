@@ -20,9 +20,14 @@
   --input: rgba(255, 255, 255, 0.04);
   /* Подкраска фоновых эмодзи: на тёмном фоне гасим слабо, иначе они тонут */
   --emoji-tone: saturate(0.82) brightness(0.88);
-  /* Плашка знака: почти чёрная на тёмной теме, белая на светлой */
-  --logo-tile: #121b2a;
-  --logo-tile-edge: rgba(255, 255, 255, 0.14);
+  /* Знак: цвета сняты с авторского эскиза, отдельно для каждой темы */
+  --logo-tile-top: #182631;
+  --logo-tile-bottom: #101626;
+  --logo-edge: rgba(174, 252, 228, 0.3);
+  --logo-a-top: #12d69c;
+  --logo-a-bottom: #039269;
+  --logo-o-top: #6cedb2;
+  --logo-o-bottom: #14b386;
   color-scheme: dark;
 }
 
@@ -38,8 +43,13 @@
   --input: rgba(15, 23, 42, 0.03);
   /* На белом фоне светлые эмодзи пропадают — притемняем и чуть насыщаем */
   --emoji-tone: saturate(1) brightness(0.9);
-  --logo-tile: #ffffff;
-  --logo-tile-edge: rgba(15, 23, 42, 0.12);
+  --logo-tile-top: #fafafa;
+  --logo-tile-bottom: #e8f1ec;
+  --logo-edge: rgba(15, 23, 42, 0.07);
+  --logo-a-top: #1ad3a0;
+  --logo-a-bottom: #0f9f77;
+  --logo-o-top: #c2e8d5;
+  --logo-o-bottom: #84c4ac;
   color-scheme: light;
 }
 
