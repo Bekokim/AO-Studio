@@ -1,67 +1,93 @@
 import { useId } from 'react'
 
 /**
- * Знак AO Studio: буквы AO прорезаны насквозь в зелёной плашке со скруглёнными углами.
+ * Знак AO Studio: монограмма «AO» на плашке со скруглёнными углами.
  *
- * Буквы не залиты краской, а вырезаны маской — сквозь них виден фон страницы. Поэтому знак
- * сам подстраивается под тему: на тёмной буквы тёмные, на светлой светлые, и отдельная
- * версия под каждую тему не нужна.
+ * Буквы сцеплены: перекладина «A» уходит под кольцо «O», и знак читается одним росчерком.
+ * «A» темнее, «O» светлее — так понятно, какая буква поверх какой, даже когда знак
+ * ужат до строки меню.
  *
- * Шрифт тот же, что на сайте, — Roboto Slab. Кегль и положение выверены замером метрик:
- * при кегле 26 в поле 48×48 чернила «AO» встают ровно по центру.
+ * Плашка берёт цвет из темы (`--logo-tile`): на тёмной она почти чёрная, на светлой белая.
+ * Поэтому знак один на обе темы, отдельной версии под каждую не нужно.
+ *
+ * Геометрия задана числами, а не шрифтом: прежний знак набирался Roboto Slab, и в фавиконке
+ * без веб-шрифта буквы разъезжались. Нарисованные контуры везде одинаковы.
  */
+
+// Буквы в поле 48×48. Значения выверены по эскизу: «A» и «O» сцепляются перекладиной
+const A_OUTLINE = 'M7.8 34.8 L15.2 13.2 L22.6 34.8'
+const A_BAR = 'M10.2 26.8 H21'
+const O = { cx: 30.8, cy: 25.0, r: 8.1 }
+
 export default function Logo({ size = 36 }: { size?: number }) {
   // Свой id на каждый знак: с общим браузер берёт первый в документе, а он может оказаться
-  // в скрытом блоке (мобильная шапка) — тогда заливка и маска не применяются
+  // в скрытом блоке (мобильная шапка) — тогда градиент не применится
   const uid = useId().replace(/:/g, '')
-  const gradId = `ao-grad-${uid}`
-  const maskId = `ao-mask-${uid}`
+  const aGrad = `ao-a-${uid}`
+  const oGrad = `ao-o-${uid}`
+  const aClip = `ao-clip-${uid}`
+  const blur = `ao-blur-${uid}`
 
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 48 48"
-      className="shrink-0 drop-shadow-[0_4px_20px_rgba(16,185,129,0.4)]"
+      className="ao-logo shrink-0"
       role="img"
       aria-label="AO Studio"
     >
       <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="var(--green-light)" />
+        <linearGradient id={aGrad} x1="0.25" y1="0" x2="0.1" y2="1">
+          <stop offset="0" stopColor="var(--green)" />
           <stop offset="1" stopColor="var(--green-dark)" />
         </linearGradient>
-        <mask id={maskId}>
-          {/* Белое остаётся, чёрное вырезается */}
-          <rect width="48" height="48" rx="13" fill="#fff" />
-          <text
-            x="24.013"
-            y="33.344"
-            textAnchor="middle"
-            fontFamily="'Roboto Slab', Georgia, serif"
-            fontWeight="800"
-            fontSize="26"
-            fill="#000"
-          >
-            AO
-          </text>
-        </mask>
+        <linearGradient id={oGrad} x1="1" y1="0" x2="0.2" y2="1">
+          <stop offset="0" stopColor="#6ee7b7" />
+          <stop offset="1" stopColor="var(--green-light)" />
+        </linearGradient>
+        {/* Тень от «O» ложится только на «A»: по плашке она бы размазалась грязным пятном */}
+        <clipPath id={aClip}>
+          <path d={A_OUTLINE} fill="none" stroke="#000" strokeWidth="5.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={A_BAR} fill="none" stroke="#000" strokeWidth="5" strokeLinecap="round" />
+        </clipPath>
+        <filter id={blur} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="1.1" />
+        </filter>
       </defs>
 
-      <rect width="48" height="48" rx="13" fill={`url(#${gradId})`} mask={`url(#${maskId})`} />
-      {/* Кромка — намёк на оправу. Непрерывная линия вдоль силуэта переживает уменьшение:
-          деталь внутри плашки на 32 px превращается в шум, а она читается даже там */}
+      <rect width="48" height="48" rx="12" fill="var(--logo-tile)" />
+      {/* Кромка: на тёмной плашке она светлая, на белой — чуть темнее фона, иначе знак
+          на светлой теме сливается со страницей */}
       <rect
-        x="2.6"
-        y="2.6"
-        width="42.8"
-        height="42.8"
-        rx="11"
+        x="0.7"
+        y="0.7"
+        width="46.6"
+        height="46.6"
+        rx="11.4"
         fill="none"
-        stroke="#fff"
-        strokeOpacity="0.38"
-        strokeWidth="1.6"
+        stroke="var(--logo-tile-edge)"
+        strokeWidth="1.4"
       />
+
+      <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d={A_OUTLINE} stroke={`url(#${aGrad})`} strokeWidth="5.6" />
+        <path d={A_BAR} stroke={`url(#${aGrad})`} strokeWidth="5" />
+
+        <g clipPath={`url(#${aClip})`}>
+          <circle
+            cx={O.cx}
+            cy={O.cy}
+            r={O.r}
+            stroke="#04372a"
+            strokeOpacity="0.45"
+            strokeWidth="7"
+            filter={`url(#${blur})`}
+          />
+        </g>
+
+        <circle cx={O.cx} cy={O.cy} r={O.r} stroke={`url(#${oGrad})`} strokeWidth="6.4" />
+      </g>
     </svg>
   )
 }

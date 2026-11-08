@@ -20,6 +20,9 @@
   --input: rgba(255, 255, 255, 0.04);
   /* Подкраска фоновых эмодзи: на тёмном фоне гасим слабо, иначе они тонут */
   --emoji-tone: saturate(0.82) brightness(0.88);
+  /* Плашка знака: почти чёрная на тёмной теме, белая на светлой */
+  --logo-tile: #121b2a;
+  --logo-tile-edge: rgba(255, 255, 255, 0.14);
   color-scheme: dark;
 }
 
@@ -35,6 +38,8 @@
   --input: rgba(15, 23, 42, 0.03);
   /* На белом фоне светлые эмодзи пропадают — притемняем и чуть насыщаем */
   --emoji-tone: saturate(1) brightness(0.9);
+  --logo-tile: #ffffff;
+  --logo-tile-edge: rgba(15, 23, 42, 0.12);
   color-scheme: light;
 }
 
@@ -374,4 +379,13 @@ kbd {
   .bg-blob {
     animation: none;
   }
+}
+
+/* Знак сайта. На тёмной теме плашку от фона отделяет зелёное свечение, на светлой его мало:
+   белое по белому не читается, поэтому там добавлена ещё и обычная мягкая тень */
+.ao-logo {
+  filter: drop-shadow(0 4px 18px rgba(16, 185, 129, 0.3));
+}
+[data-theme='light'] .ao-logo {
+  filter: drop-shadow(0 1px 3px rgba(15, 23, 42, 0.12)) drop-shadow(0 6px 16px rgba(16, 185, 129, 0.2));
 }
