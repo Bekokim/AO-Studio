@@ -1,3 +1,4 @@
+import { tr } from '../../lib/i18n'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Ban, Crown, Pencil, ShieldCheck, Undo2, WifiOff, X } from '../../lib/icons'
 import { useEffect, useRef, useState } from 'react'
@@ -153,13 +154,13 @@ export default function AnticheatPanel() {
               <Ban size={20} className={`mt-0.5 shrink-0 ${alert.fatal ? 'text-red-400' : 'text-yellow-400'}`} />
               <div className="min-w-0 flex-1 text-sm">
                 <div className={`font-bold ${alert.fatal ? 'text-red-400' : 'text-yellow-400'}`}>
-                  Игрок {alert.who} — {alert.fatal ? 'бан' : 'предупреждение'}
+                  {tr('Игрок')} {alert.who} — {alert.fatal ? tr('бан') : tr('предупреждение')}
                 </div>
                 <div className="mt-0.5 text-muted">
-                  Команда {alert.team} · {alert.label}
+                  {tr('Команда')} {alert.team} · {alert.label}
                 </div>
               </div>
-              <button onClick={() => setAlert(null)} className="shrink-0 rounded-lg p-1 text-muted hover:text-fg" aria-label="Скрыть">
+              <button onClick={() => setAlert(null)} className="shrink-0 rounded-lg p-1 text-muted hover:text-fg" aria-label={tr('Скрыть')}>
                 <X size={16} />
               </button>
             </div>
@@ -169,7 +170,7 @@ export default function AnticheatPanel() {
 
       {/* Кнопка и список нарушений. В режиме проектора скрыты — но не в игре с доски:
           там это единственное устройство ведущего */}
-      <div className={`fixed bottom-4 left-4 z-40 ${board ? '' : 'host-only'}`}>
+      <div className={`fixed bottom-4 right-4 z-40 flex flex-col items-end ${board ? '' : 'host-only'}`}>
         <AnimatePresence>
           {open && (
             <motion.div
@@ -180,32 +181,31 @@ export default function AnticheatPanel() {
             >
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 font-bold">
-                  <ShieldCheck size={18} className="text-green" /> Защита от списывания
+                  <ShieldCheck size={18} className="text-green" /> {tr('Защита от списывания')}
                 </h3>
-                <button onClick={() => setOpen(false)} className="rounded-lg p-1 text-muted hover:text-fg" aria-label="Закрыть">
+                <button onClick={() => setOpen(false)} className="rounded-lg p-1 text-muted hover:text-fg" aria-label={tr('Закрыть')}>
                   <X size={16} />
                 </button>
               </div>
 
               <p className="text-xs text-muted">
-                Первый уход с экрана — предупреждение, второй — бан игроку. Забанили {allowed} игроков команды —
-                бан всей команде. Любой бан можно отменить.
+                {tr('Первый уход с экрана — предупреждение, второй — бан игроку. Забанили')} {allowed} {tr('игроков команды — бан всей команде. Любой бан можно отменить.')}
               </p>
 
               {dq.length > 0 && (
                 <div className="mt-4">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">Команды в бане</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">{tr('Команды в бане')}</div>
                   <div className="space-y-2">
                     {dq.map((t) => (
                       <div key={t.id} className="rounded-xl border border-red-400/40 bg-red-400/5 p-3">
                         <div className="flex items-center gap-2 font-semibold">
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: t.color }} />
-                          <span className="min-w-0 flex-1 truncate">Команда {t.name}</span>
+                          <span className="min-w-0 flex-1 truncate">{tr('Команда')} {t.name}</span>
                           <span className="shrink-0 tabular-nums text-muted">{t.score}</span>
                         </div>
                         <div className="mt-1 text-xs text-muted">{t.dq_reason}</div>
                         <button onClick={() => void pardonTeam(t.id)} className="btn btn-ghost mt-2 w-full px-3 py-1.5 text-xs">
-                          <Undo2 size={14} /> Отменить бан
+                          <Undo2 size={14} /> {tr('Отменить бан')}
                         </button>
                       </div>
                     ))}
@@ -215,27 +215,27 @@ export default function AnticheatPanel() {
 
               {out.length > 0 && (
                 <div className="mt-4">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">Игроки в бане</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">{tr('Игроки в бане')}</div>
                   <div className="space-y-2">
                     {out.map(({ team, p }) => (
                       <div key={p.id} className="rounded-xl border border-red-400/40 bg-red-400/5 p-3">
                         <div className="flex items-center gap-2 text-sm font-semibold">
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: team.color }} />
                           <span className="min-w-0 flex-1 truncate">
-                            Игрок {p.name}
+                            {tr('Игрок')} {p.name}
                             {p.is_captain && <Crown size={11} className="ml-1 inline text-yellow-400" fill="currentColor" />}
                           </span>
                           <span className="shrink-0 rounded-md bg-red-400/15 px-1.5 py-0.5 text-[11px] font-bold text-red-400">
-                            бан
+                            {tr('бан')}
                           </span>
                         </div>
-                        <div className="mt-0.5 truncate text-xs text-muted">Команда {team.name}</div>
+                        <div className="mt-0.5 truncate text-xs text-muted">{tr('Команда')} {team.name}</div>
                         <div className="mt-1 text-xs text-muted">{p.dq_reason}</div>
                         <button
                           onClick={() => void pardonParticipant(team.id, p.id)}
                           className="btn btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
                         >
-                          <Undo2 size={14} /> Отменить бан
+                          <Undo2 size={14} /> {tr('Отменить бан')}
                         </button>
                       </div>
                     ))}
@@ -245,7 +245,7 @@ export default function AnticheatPanel() {
 
               {warned.length > 0 && (
                 <div className="mt-4">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-yellow-400">Предупреждения</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-yellow-400">{tr('Предупреждения')}</div>
                   <div className="space-y-1.5">
                     {warned.map(({ team, p }) => (
                       <div
@@ -254,20 +254,20 @@ export default function AnticheatPanel() {
                       >
                         <div className="flex items-center gap-2">
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: team.color }} />
-                          <span className="min-w-0 flex-1 truncate font-semibold">Игрок {p.name}</span>
+                          <span className="min-w-0 flex-1 truncate font-semibold">{tr('Игрок')} {p.name}</span>
                           <span className="shrink-0 rounded-md bg-yellow-400/15 px-1.5 py-0.5 text-[11px] font-bold text-yellow-400">
-                            предупреждение
+                            {tr('предупреждение')}
                           </span>
                           <button
                             onClick={() => void pardonParticipant(team.id, p.id)}
                             className="shrink-0 rounded-lg p-1 text-muted hover:text-fg"
-                            title="Снять предупреждение"
+                            title={tr('Снять предупреждение')}
                           >
                             <Undo2 size={14} />
                           </button>
                         </div>
                         <div className="mt-0.5 truncate text-xs text-muted">
-                          Команда {team.name} · {p.warnings} из {status.warnings_allowed + 1}
+                          {tr('Команда')} {team.name} · {p.warnings} {tr('из')} {status.warnings_allowed + 1}
                         </div>
                       </div>
                     ))}
@@ -277,13 +277,13 @@ export default function AnticheatPanel() {
 
               {offline.length > 0 && (
                 <div className="mt-4">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Нет связи с устройством</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">{tr('Нет связи с устройством')}</div>
                   <div className="space-y-1.5">
                     {offline.map(({ team, p }) => (
                       <div key={p.id} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm">
                         <WifiOff size={14} className="shrink-0 text-muted" />
-                        <span className="min-w-0 flex-1 truncate">Игрок {p.name}</span>
-                        <span className="shrink-0 truncate text-xs text-muted">Команда {team.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{tr('Игрок')} {p.name}</span>
+                        <span className="shrink-0 truncate text-xs text-muted">{tr('Команда')} {team.name}</span>
                       </div>
                     ))}
                   </div>
@@ -292,7 +292,7 @@ export default function AnticheatPanel() {
 
               {/* Кто за какую команду пишет ответы — ведущему это нужно, чтобы понимать, с кого спрос */}
               <div className="mt-4">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Кто играет</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">{tr('Кто играет')}</div>
                 <div className="space-y-1.5">
                   {status.teams.map((t) => (
                     <div key={t.id} className="rounded-xl border border-line bg-fg/[0.03] px-3 py-2 text-xs">
@@ -325,9 +325,9 @@ export default function AnticheatPanel() {
               </div>
 
               <div className="mt-4">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Что было</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">{tr('Что было')}</div>
                 {status.violations.length === 0 ? (
-                  <p className="text-sm text-muted">Пока чисто — все на экране игры.</p>
+                  <p className="text-sm text-muted">{tr('Пока чисто — все на экране игры.')}</p>
                 ) : (
                   <div className="space-y-1.5">
                     {status.violations.map((v) => (
@@ -343,7 +343,7 @@ export default function AnticheatPanel() {
                         </div>
                         <div className="mt-0.5 text-muted">
                           {v.label}
-                          {v.fatal && <b className="text-red-400"> — бан</b>}
+                          {v.fatal && <b className="text-red-400"> {tr('— бан')}</b>}
                         </div>
                       </div>
                     ))}
@@ -359,10 +359,10 @@ export default function AnticheatPanel() {
           className={`glass-strong flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
             dq.length > 0 ? 'text-red-400' : attention > 0 ? 'text-yellow-400' : 'text-green'
           }`}
-          title="Защита от списывания: нарушения команд"
+          title={tr('Защита от списывания: нарушения команд')}
         >
           {dq.length > 0 ? <Ban size={18} /> : <ShieldCheck size={18} />}
-          Защита
+          {tr('Защита')}
           {attention > 0 && (
             <span
               className={`rounded-full px-1.5 py-0.5 text-xs font-bold text-white ${dq.length > 0 ? 'bg-red-400' : 'bg-yellow-500'}`}

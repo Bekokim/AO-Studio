@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { tr } from '../lib/i18n'
 import { X } from '../lib/icons'
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -59,7 +60,7 @@ export default function Modal({ open, onClose, children, title, size = 'md', clo
                   <button
                     onClick={onClose}
                     className="rounded-full p-2 text-muted transition hover:bg-fg/10 hover:text-fg"
-                    aria-label="Закрыть"
+                    aria-label={tr('Закрыть')}
                   >
                     <X size={20} />
                   </button>

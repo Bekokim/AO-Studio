@@ -1,3 +1,4 @@
+import { tr } from '../../lib/i18n'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, CheckCircle2, Crown, Eye, SkipForward, X, XCircle } from '../../lib/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -180,9 +181,9 @@ export default function Strategic() {
     <GameShell
       onFinish={end}
       hotkeys={[
-        { key: 'Enter', label: 'верно' },
-        { key: 'Esc', label: 'неверно' },
-        { key: 'Space', label: 'ответ' },
+        { key: 'Enter', label: tr('верно') },
+        { key: 'Esc', label: tr('неверно') },
+        { key: 'Space', label: tr('ответ') },
       ]}
     >
       <div className="grid flex-1 gap-4 p-4 sm:p-6 xl:grid-cols-[1fr_320px]">
@@ -200,7 +201,7 @@ export default function Strategic() {
               >
                 <span className="inline-flex items-center gap-2">
                   {verdict.correct ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-                  «{verdict.team}»: {verdict.text} — {verdict.correct ? 'верно, баллы начислены' : 'неверно'}
+                  «{verdict.team}»: {verdict.text} — {verdict.correct ? tr('верно, баллы начислены') : tr('неверно')}
                 </span>
               </motion.div>
             )}
@@ -218,14 +219,14 @@ export default function Strategic() {
                 style={{ borderColor: active.color, background: `${active.color}1f` }}
               >
                 <Crown className="text-yellow-400" fill="currentColor" size={22} />
-                Ход команды:{' '}
+                {tr('Ход команды:')}{' '}
                 <span style={{ color: active.color }}>
                   №{activeIdx % Math.max(1, teams.length) + 1} {active.name}
                 </span>
                 <button
                   onClick={() => setActiveIdx(nextTeamIndex(teams, activeIdx))}
                   className="host-only ml-2 rounded-lg p-1.5 text-muted hover:bg-fg/10 hover:text-fg"
-                  title="Передать ход следующей команде"
+                  title={tr('Передать ход следующей команде')}
                 >
                   <SkipForward size={18} />
                 </button>
@@ -278,12 +279,12 @@ export default function Strategic() {
             </div>
           </div>
           <div className="mt-2 text-center text-sm text-muted">
-            Сыграно {Object.keys(results).length} из {total}
+            {tr('Сыграно')} {Object.keys(results).length} {tr('из')} {total}
           </div>
         </section>
 
         <aside className="glass h-fit rounded-3xl p-4 xl:sticky xl:top-4">
-          <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-widest text-muted">Табло</h3>
+          <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-widest text-muted">{tr('Табло')}</h3>
           <Scoreboard teams={teams} activeId={active?.id} onAdjust={addScore} />
         </aside>
       </div>
@@ -295,10 +296,10 @@ export default function Strategic() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-sm font-semibold uppercase tracking-widest text-green">{current.catName}</div>
-                <div className="mt-1 text-4xl font-extrabold text-gradient">{current.points} балл.</div>
+                <div className="mt-1 text-4xl font-extrabold text-gradient">{current.points} {tr('балл.')}</div>
                 {active && (
                   <div className="mt-2 flex items-center gap-2 text-muted">
-                    <Crown size={16} className="text-yellow-400" fill="currentColor" /> Отвечает:{' '}
+                    <Crown size={16} className="text-yellow-400" fill="currentColor" /> {tr('Отвечает:')}{' '}
                     <b style={{ color: active.color }}>{active.name}</b>
                   </div>
                 )}
@@ -319,7 +320,7 @@ export default function Strategic() {
                   exit={{ opacity: 0 }}
                   className="rounded-2xl border border-green/40 bg-green/10 p-4 text-center"
                 >
-                  <div className="text-xs uppercase tracking-widest text-muted">Правильный ответ</div>
+                  <div className="text-xs uppercase tracking-widest text-muted">{tr('Правильный ответ')}</div>
                   <div className="mt-1 text-2xl font-extrabold text-green">{current.answer}</div>
                 </motion.div>
               )}
@@ -335,42 +336,42 @@ export default function Strategic() {
               >
                 <input
                   className="input py-3 text-lg"
-                  placeholder={`Ответ команды «${active.name}» — проверим автоматически`}
+                  placeholder={tr('Ответ команды «{team}» — проверим автоматически', { team: active.name })}
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
                   autoComplete="off"
                 />
                 <button type="submit" disabled={!typed.trim()} className="btn btn-primary px-5">
-                  Проверить
+                  {tr('Проверить')}
                 </button>
               </form>
             )}
 
             {online && active && (
               <div className="host-only rounded-2xl border border-line bg-fg/[0.03] p-4">
-                <div className="text-xs uppercase tracking-widest text-muted">Ответ команды «{active.name}»</div>
+                <div className="text-xs uppercase tracking-widest text-muted">{tr('Ответ команды «')}{active.name}»</div>
                 {activeAnswer ? (
                   <div className="mt-1 flex items-center gap-2 text-xl font-bold">
                     {activeAnswer.text}
                     {activeAnswer.matches && (
-                      <span className="rounded-md bg-green/15 px-2 py-0.5 text-xs font-semibold text-green">совпадает</span>
+                      <span className="rounded-md bg-green/15 px-2 py-0.5 text-xs font-semibold text-green">{tr('совпадает')}</span>
                     )}
                   </div>
                 ) : (
-                  <div className="mt-1 text-muted">Ждём ответ…</div>
+                  <div className="mt-1 text-muted">{tr('Ждём ответ…')}</div>
                 )}
               </div>
             )}
 
             <div className="host-only grid gap-3 sm:grid-cols-[auto_1fr_1fr]">
               <button onClick={() => setShowAnswer((s) => !s)} className="btn btn-ghost">
-                <Eye size={18} /> {showAnswer ? 'Скрыть' : 'Ответ'}
+                <Eye size={18} /> {showAnswer ? tr('Скрыть') : tr('Ответ')}
               </button>
               <button onClick={() => judge(true)} className="btn btn-primary py-3.5 text-base">
-                <CheckCircle2 size={18} /> Правильно <kbd className="border-white/30 bg-white/10 text-white">Enter</kbd>
+                <CheckCircle2 size={18} /> {tr('Правильно')} <kbd className="border-white/30 bg-white/10 text-white">Enter</kbd>
               </button>
               <button onClick={() => judge(false)} className="btn btn-danger py-3.5 text-base">
-                <XCircle size={18} /> Неправильно <kbd>Esc</kbd>
+                <XCircle size={18} /> {tr('Неправильно')} <kbd>Esc</kbd>
               </button>
             </div>
           </div>

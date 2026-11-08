@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
@@ -62,10 +63,10 @@ api.interceptors.response.use(
 )
 
 /** Достаёт человекочитаемое сообщение из ошибки DRF */
-export function errorMessage(err: unknown, fallback = 'Что-то пошло не так. Попробуйте ещё раз.'): string {
+export function errorMessage(err: unknown, fallback = tr('Что-то пошло не так. Попробуйте ещё раз.')): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as unknown
-    if (!err.response) return 'Сервер недоступен. Проверьте подключение.'
+    if (!err.response) return tr('Сервер недоступен. Проверьте подключение.')
     if (typeof data === 'string') return fallback
     if (data && typeof data === 'object') {
       const d = data as Record<string, unknown>

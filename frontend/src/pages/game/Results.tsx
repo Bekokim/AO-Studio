@@ -1,3 +1,4 @@
+import { tr } from '../../lib/i18n'
 import confetti from 'canvas-confetti'
 import { motion } from 'framer-motion'
 import { Home, MedalFirst, MedalSecond, MedalThird, RotateCcw } from '../../lib/icons'
@@ -66,7 +67,7 @@ export default function Results() {
       <div className="relative z-10 mx-auto max-w-4xl">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center text-center">
           <Logo size={48} />
-          <h1 className="mt-4 text-4xl font-extrabold sm:text-5xl">Итоги игры</h1>
+          <h1 className="mt-4 text-4xl font-extrabold sm:text-5xl">{tr('Итоги игры')}</h1>
           <p className="mt-2 text-muted">{room.title}</p>
           <OrnamentDivider className="mt-5" />
         </motion.div>
@@ -113,9 +114,9 @@ export default function Results() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-widest text-muted">
-                <th className="px-5 py-3">Место</th>
-                <th className="px-5 py-3">Команда</th>
-                <th className="px-5 py-3 text-right">Баллы</th>
+                <th className="px-5 py-3">{tr('Место')}</th>
+                <th className="px-5 py-3">{tr('Команда')}</th>
+                <th className="px-5 py-3 text-right">{tr('Баллы')}</th>
               </tr>
             </thead>
             <tbody>
@@ -137,10 +138,10 @@ export default function Results() {
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2 }} className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <button onClick={() => leave('new')} className="btn btn-primary px-8 py-3.5">
-            <RotateCcw size={18} /> Новая игра
+            <RotateCcw size={18} /> {tr('Новая игра')}
           </button>
           <button onClick={() => leave('home')} className="btn btn-ghost px-8 py-3.5">
-            <Home size={18} /> На главную
+            <Home size={18} /> {tr('На главную')}
           </button>
         </motion.div>
       </div>

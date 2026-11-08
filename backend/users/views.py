@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -119,3 +122,50 @@ class MeDeleteView(APIView):
             )
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MeActivityView(APIView):
+    """
+    Календарь активности за последний год — по дню на клетку, как на GitHub.
+
+    Активностью считаем то, что человек сделал сам: создал AO комнату или провёл игру.
+    Считаем на сервере одним запросом на вид активности, а не выгружаем даты на клиент:
+    за год у активного автора это сотни записей, а клетки всё равно дневные.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    DAYS = 365
+
+    def get(self, request):
+        from django.db.models import Count
+        from django.db.models.functions import TruncDate
+
+        from game.models import GameSession
+        from rooms.models import AORoom
+
+        today = timezone.localdate()
+        start = today - timedelta(days=self.DAYS - 1)
+        days = {}
+
+        def collect(qs, key):
+            rows = (
+                qs.annotate(day=TruncDate("created_at"))
+                .values("day")
+                .annotate(n=Count("id"))
+                .order_by()
+            )
+            for row in rows:
+                if row["day"] is None:
+                    continue
+                day = days.setdefault(row["day"].isoformat(), {"rooms": 0, "games": 0})
+                day[key] += row["n"]
+
+        collect(AORoom.objects.filter(author=request.user, created_at__date__gte=start), "rooms")
+        collect(
+            GameSession.objects.filter(host=request.user, created_at__date__gte=start), "games"
+        )
+        total = sum(d["rooms"] + d["games"] for d in days.values())
+        return Response(
+            {"from": start.isoformat(), "to": today.isoformat(), "total": total, "days": days}
+        )

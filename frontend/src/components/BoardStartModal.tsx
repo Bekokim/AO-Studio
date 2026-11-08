@@ -1,3 +1,4 @@
+import { tr } from '../lib/i18n'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, Clock, Loader2, Minus, Monitor, Plus, Search, ShieldCheck, Sparkles, Users } from '../lib/icons'
 import { useEffect, useState } from 'react'
@@ -51,7 +52,7 @@ function Counter({
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
         className="btn btn-ghost h-10 w-10 shrink-0 p-0 disabled:opacity-30"
-        aria-label="Меньше"
+        aria-label={tr('Меньше')}
       >
         <Minus size={16} />
       </button>
@@ -64,7 +65,7 @@ function Counter({
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
         className="btn btn-ghost h-10 w-10 shrink-0 p-0 disabled:opacity-30"
-        aria-label="Больше"
+        aria-label={tr('Больше')}
       >
         <Plus size={16} />
       </button>
@@ -162,7 +163,7 @@ export default function BoardStartModal() {
       closeBoard()
       navigate('/game/lobby')
     } catch (err) {
-      setError(errorMessage(err, 'Не удалось запустить игру.'))
+      setError(errorMessage(err, tr('Не удалось запустить игру.')))
     } finally {
       setStarting(false)
     }
@@ -175,20 +176,20 @@ export default function BoardStartModal() {
       size="lg"
       title={
         <span className="flex items-center gap-2">
-          <Monitor size={20} className="text-green" /> Запуск с доски
+          <Monitor size={20} className="text-green" /> {tr('Запуск с доски')}
         </span>
       }
     >
       <AnimatePresence mode="wait">
         {step === 1 ? (
           <motion.div key="pick" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
-            <p className="mb-4 text-sm text-muted">Выберите игру, которую проведёте на доске.</p>
+            <p className="mb-4 text-sm text-muted">{tr('Выберите игру, которую проведёте на доске.')}</p>
 
             <div className="relative mb-4">
               <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 className="input pl-11"
-                placeholder="Поиск по названию"
+                placeholder={tr('Поиск по названию')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 autoFocus
@@ -201,7 +202,7 @@ export default function BoardStartModal() {
                   <Loader2 className="animate-spin" />
                 </div>
               ) : rooms.length === 0 ? (
-                <p className="py-10 text-center text-muted">Ничего не нашлось. Попробуйте другое название.</p>
+                <p className="py-10 text-center text-muted">{tr('Ничего не нашлось. Попробуйте другое название.')}</p>
               ) : (
                 rooms.map((r) => (
                   <button
@@ -213,7 +214,7 @@ export default function BoardStartModal() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-bold">{r.title}</div>
                       <div className="mt-0.5 text-xs text-muted">
-                        {r.questions_count} {plural(r.questions_count, 'вопрос', 'вопроса', 'вопросов')}
+                        {r.questions_count} {plural(r.questions_count, tr('вопрос'), tr('вопроса'), tr('вопросов'))}
                       </div>
                     </div>
                     <FormatBadge format={r.format} compact />
@@ -231,13 +232,13 @@ export default function BoardStartModal() {
                     type="button"
                     onClick={() => setStep(1)}
                     className="rounded-lg p-1.5 text-muted transition hover:bg-fg/10 hover:text-fg"
-                    aria-label="Выбрать другую игру"
+                    aria-label={tr('Выбрать другую игру')}
                   >
                     <ArrowLeft size={18} />
                   </button>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs uppercase tracking-widest text-muted">Играем</div>
+                  <div className="text-xs uppercase tracking-widest text-muted">{tr('Играем')}</div>
                   <div className="truncate font-bold">{room.title}</div>
                 </div>
                 <FormatBadge format={room.format} compact />
@@ -247,23 +248,23 @@ export default function BoardStartModal() {
             {/* Сколько команд ждём: каждая играет с одного устройства */}
             <div className="rounded-xl border border-line p-4">
               <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Users size={16} className="text-green" /> Команд в игре
+                <Users size={16} className="text-green" /> {tr('Команд в игре')}
               </div>
-              <Counter value={teams} min={1} max={40} onChange={setTeams} hint={plural(teams, 'команда', 'команды', 'команд')} />
+              <Counter value={teams} min={1} max={40} onChange={setTeams} hint={plural(teams, tr('команда'), tr('команды'), tr('команд'))} />
               <p className="mt-3 text-xs text-muted">
-                Команда играет с одного устройства — подключается кто-то один за всю команду.
+                {tr('Команда играет с одного устройства — подключается кто-то один за всю команду.')}
               </p>
             </div>
 
             {/* Время на вопрос */}
             <div className="mt-4 rounded-xl border border-line p-4">
               <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Clock size={16} className="text-green" /> Время на вопрос
+                <Clock size={16} className="text-green" /> {tr('Время на вопрос')}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {TIMERS.map((t) => (
                   <button key={t} type="button" onClick={() => setTimer(t)} className={`chip ${timer === t ? 'active' : ''}`}>
-                    {t} сек
+                    {t} {tr('сек')}
                   </button>
                 ))}
               </div>
@@ -280,16 +281,15 @@ export default function BoardStartModal() {
               <Sparkles size={20} className={`mt-0.5 shrink-0 ${autostart ? 'text-green' : 'text-muted'}`} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2 font-semibold">
-                  Начать автоматически
+                  {tr('Начать автоматически')}
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${autostart ? 'bg-green text-white' : 'bg-fg/10 text-muted'}`}
                   >
-                    {autostart ? 'Вкл' : 'Выкл'}
+                    {autostart ? tr('Вкл') : tr('Выкл')}
                   </span>
                 </span>
                 <span className="mt-1 block text-xs text-muted">
-                  Как только соберутся все {teams} {plural(teams, 'команда', 'команды', 'команд')} — игра начнётся
-                  сама. Кнопка «Начать игру» в лобби всё равно останется.
+                  {tr('Как только соберутся все')} {teams} {plural(teams, tr('команда'), tr('команды'), tr('команд'))} {tr('— игра начнётся сама. Кнопка «Начать игру» в лобби всё равно останется.')}
                 </span>
               </span>
             </button>
@@ -305,16 +305,15 @@ export default function BoardStartModal() {
               <ShieldCheck size={20} className={`mt-0.5 shrink-0 ${anticheat ? 'text-green' : 'text-muted'}`} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2 font-semibold">
-                  Защита от списывания
+                  {tr('Защита от списывания')}
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${anticheat ? 'bg-green text-white' : 'bg-fg/10 text-muted'}`}
                   >
-                    {anticheat ? 'Вкл' : 'Выкл'}
+                    {anticheat ? tr('Вкл') : tr('Выкл')}
                   </span>
                 </span>
                 <span className="mt-1 block text-xs text-muted">
-                  Телефон каждого игрока держит игру на весь экран. Свернул или открыл другую вкладку —
-                  предупреждение, второй раз — бан.
+                  {tr('Телефон каждого игрока держит игру на весь экран. Свернул или открыл другую вкладку — предупреждение, второй раз — бан.')}
                 </span>
               </span>
             </button>
@@ -322,10 +321,10 @@ export default function BoardStartModal() {
             {error && <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">{error}</div>}
 
             <button onClick={launch} disabled={starting} className="btn btn-primary mt-5 w-full py-3.5 text-base">
-              {starting ? <Loader2 size={20} className="animate-spin" /> : <Monitor size={20} />} Показать код и QR
+              {starting ? <Loader2 size={20} className="animate-spin" /> : <Monitor size={20} />} {tr('Показать код и QR')}
             </button>
             <p className="mt-2 text-center text-xs text-muted">
-              На доске появится код и QR-код — команды сканируют его со своих телефонов
+              {tr('На доске появится код и QR-код — команды сканируют его со своих телефонов')}
             </p>
           </motion.div>
         )}

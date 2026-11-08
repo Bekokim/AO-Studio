@@ -1,3 +1,4 @@
+import { tr } from '../lib/i18n'
 import FormatIcon from '../components/FormatIcon'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, FolderPlus, Globe, Loader2, Lock, Trash2 } from '../lib/icons'
@@ -17,7 +18,8 @@ interface CDraft {
   questions: QDraft[]
 }
 
-const STEPS = ['Название и формат', 'Вопросы', 'Настройки']
+// Функция, а не константа: иначе названия шагов не переживут смену языка
+const stepTitles = () => [tr('Название и формат'), tr('Вопросы'), tr('Настройки')]
 // Одинаковый набор во всех форматах и режимах
 const TIMERS = [30, 45, 60]
 
@@ -88,7 +90,7 @@ export default function CreateRoom() {
         setTimer(TIMERS.includes(data.timer_duration) ? data.timer_duration : 60)
         setDescription(data.description)
       })
-      .catch(() => setError('Не удалось загрузить комнату'))
+      .catch(() => setError(tr('Не удалось загрузить комнату')))
       .finally(() => setLoading(false))
   }, [editId, user, navigate])
 
@@ -100,7 +102,7 @@ export default function CreateRoom() {
     }
     if (f !== 'random' && format === 'random' && !categories.length) {
       const filled = questions.filter((q) => q.text.trim() || q.answer.trim())
-      if (filled.length) setCategories([{ key: uid(), name: 'Общая', questions: filled }])
+      if (filled.length) setCategories([{ key: uid(), name: tr('Общая'), questions: filled }])
     }
     setFormat(f)
   }
@@ -117,18 +119,18 @@ export default function CreateRoom() {
 
   const stepError = (s: number): string => {
     if (s === 0) {
-      if (!title.trim()) return 'Введите название игры'
-      if (!format) return 'Выберите формат игры'
+      if (!title.trim()) return tr('Введите название игры')
+      if (!format) return tr('Выберите формат игры')
     }
     if (s === 1) {
       if (format !== 'random') {
-        if (!categories.length) return 'Добавьте хотя бы одну категорию'
-        if (categories.some((c) => !c.name.trim())) return 'У всех категорий должно быть название'
+        if (!categories.length) return tr('Добавьте хотя бы одну категорию')
+        if (categories.some((c) => !c.name.trim())) return tr('У всех категорий должно быть название')
       }
-      if (!allQuestions.length) return 'Добавьте хотя бы один вопрос'
-      if (allQuestions.some((q) => !q.text.trim() || !q.answer.trim())) return 'Заполните текст и ответ у всех вопросов'
+      if (!allQuestions.length) return tr('Добавьте хотя бы один вопрос')
+      if (allQuestions.some((q) => !q.text.trim() || !q.answer.trim())) return tr('Заполните текст и ответ у всех вопросов')
     }
-    if (s === 2 && (!timer || timer < 5 || timer > 3600)) return 'Таймер: от 5 до 3600 секунд'
+    if (s === 2 && (!timer || timer < 5 || timer > 3600)) return tr('Таймер: от 5 до 3600 секунд')
     return ''
   }
 
@@ -193,7 +195,7 @@ export default function CreateRoom() {
       await Promise.all(uploads)
       navigate('/profile')
     } catch (err) {
-      setError(errorMessage(err, 'Не удалось сохранить комнату'))
+      setError(errorMessage(err, tr('Не удалось сохранить комнату')))
     } finally {
       setSaving(false)
     }
@@ -216,10 +218,10 @@ export default function CreateRoom() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:py-10">
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-extrabold">{editId ? 'Редактировать АО' : 'Создать АО'}</h1>
+        <h1 className="text-3xl font-extrabold">{editId ? tr('Редактировать АО') : tr('Создать АО')}</h1>
         {editId && (
           <button onClick={() => setDeleteOpen(true)} className="btn btn-danger px-3 py-2 text-sm">
-            <Trash2 size={16} /> <span className="hidden sm:inline">Удалить</span>
+            <Trash2 size={16} /> <span className="hidden sm:inline">{tr('Удалить')}</span>
           </button>
         )}
       </div>
@@ -227,7 +229,7 @@ export default function CreateRoom() {
       {/* Прогресс-бар */}
       <div className="glass mb-8 rounded-2xl p-3">
         <div className="flex items-center">
-          {STEPS.map((s, i) => (
+          {stepTitles().map((s, i) => (
             <div key={s} className="flex flex-1 items-center last:flex-none">
               <button onClick={() => goTo(i)} className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-left">
                 <motion.span
@@ -240,7 +242,7 @@ export default function CreateRoom() {
                 </motion.span>
                 <span className={`hidden text-sm font-semibold sm:block ${i === step ? 'text-fg' : 'text-muted'}`}>{s}</span>
               </button>
-              {i < STEPS.length - 1 && (
+              {i < stepTitles().length - 1 && (
                 <div className="mx-2 h-1 flex-1 overflow-hidden rounded-full bg-fg/10">
                   <motion.div className="h-full bg-green" animate={{ width: i < step ? '100%' : '0%' }} transition={{ duration: 0.4 }} />
                 </div>
@@ -262,10 +264,10 @@ export default function CreateRoom() {
           {step === 0 && (
             <div className="space-y-8">
               <label className="block">
-                <span className="mb-2 block font-semibold">Название игры</span>
+                <span className="mb-2 block font-semibold">{tr('Название игры')}</span>
                 <input
                   className={`input py-3.5 text-lg ${showErrors && !title.trim() ? 'invalid' : ''}`}
-                  placeholder="Например: Python для начинающих"
+                  placeholder={tr('Например: Python для начинающих')}
                   value={title}
                   maxLength={200}
                   onChange={(e) => setTitle(e.target.value)}
@@ -273,15 +275,15 @@ export default function CreateRoom() {
                 />
               </label>
               <div>
-                <span className="mb-3 block font-semibold">Кто увидит игру</span>
+                <span className="mb-3 block font-semibold">{tr('Кто увидит игру')}</span>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
-                    { v: true, icon: Globe, label: 'Публичная', text: 'Видна всем в AO комнатах и в поиске' },
+                    { v: true, icon: Globe, label: tr('Публичная'), text: tr('Видна всем в AO комнатах и в поиске') },
                     {
                       v: false,
                       icon: Lock,
-                      label: 'Приватная',
-                      text: 'В списке не показывается: её найдут, только набрав название целиком, или откроют по ссылке',
+                      label: tr('Приватная'),
+                      text: tr('В списке не показывается: её найдут, только набрав название целиком, или откроют по ссылке'),
                     },
                   ].map((o) => (
                     <button
@@ -298,7 +300,7 @@ export default function CreateRoom() {
               </div>
 
               <div>
-                <span className="mb-3 block font-semibold">Формат игры</span>
+                <span className="mb-3 block font-semibold">{tr('Формат игры')}</span>
                 <div className="grid gap-4 md:grid-cols-3">
                   {(Object.keys(FORMATS) as GameFormat[]).map((f) => {
                     const on = format === f
@@ -330,23 +332,23 @@ export default function CreateRoom() {
               {format === 'random' ? (
                 <div className="glass rounded-2xl p-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-bold">Вопросы для карточек</h2>
-                    <span className="text-sm text-muted">{questions.length} шт.</span>
+                    <h2 className="text-lg font-bold">{tr('Вопросы для карточек')}</h2>
+                    <span className="text-sm text-muted">{questions.length} {tr('шт.')}</span>
                   </div>
                   <QuestionList questions={questions} onChange={setQuestions} showErrors={showErrors} />
                 </div>
               ) : (
                 <>
                   <form onSubmit={addCategory} className="glass flex gap-2 rounded-2xl p-3">
-                    <input className="input" placeholder="Название категории, например «История»" value={newCat} maxLength={100} onChange={(e) => setNewCat(e.target.value)} />
+                    <input className="input" placeholder={tr('Название категории, например «История»')} value={newCat} maxLength={100} onChange={(e) => setNewCat(e.target.value)} />
                     <button type="submit" disabled={!newCat.trim()} className="btn btn-primary">
-                      <FolderPlus size={18} /> <span className="hidden sm:inline">Добавить</span>
+                      <FolderPlus size={18} /> <span className="hidden sm:inline">{tr('Добавить')}</span>
                     </button>
                   </form>
 
                   {categories.length === 0 && (
                     <div className={`rounded-2xl border border-dashed py-12 text-center text-muted ${showErrors ? 'border-red-400/60' : 'border-line'}`}>
-                      Добавьте первую категорию
+                      {tr('Добавьте первую категорию')}
                     </div>
                   )}
 
@@ -368,15 +370,15 @@ export default function CreateRoom() {
                             className={`input border-transparent bg-transparent px-2 text-lg font-bold focus:bg-fg/5 ${showErrors && !c.name.trim() ? 'invalid' : ''}`}
                             value={c.name}
                             maxLength={100}
-                            placeholder="Название категории"
+                            placeholder={tr('Название категории')}
                             onChange={(e) => setCategories((cs) => cs.map((x) => (x.key === c.key ? { ...x, name: e.target.value } : x)))}
                           />
-                          <span className="hidden shrink-0 text-sm text-muted sm:block">{c.questions.length} вопр.</span>
+                          <span className="hidden shrink-0 text-sm text-muted sm:block">{c.questions.length} {tr('вопр.')}</span>
                           <button
                             type="button"
                             onClick={() => setCategories((cs) => cs.filter((x) => x.key !== c.key))}
                             className="shrink-0 rounded-lg p-2 text-muted hover:bg-red-400/10 hover:text-red-400"
-                            aria-label="Удалить категорию"
+                            aria-label={tr('Удалить категорию')}
                           >
                             <Trash2 size={18} />
                           </button>
@@ -398,7 +400,7 @@ export default function CreateRoom() {
           {step === 2 && (
             <div className="space-y-5">
               <div className="glass rounded-2xl p-5">
-                <span className="mb-3 block font-semibold">⏱️ Таймер на вопрос</span>
+                <span className="mb-3 block font-semibold">{tr('⏱️ Таймер на вопрос')}</span>
                 <div className="flex flex-wrap gap-2">
                   {TIMERS.map((t) => (
                     <button
@@ -407,7 +409,7 @@ export default function CreateRoom() {
                       onClick={() => setTimer(t)}
                       className={`chip px-5 py-2 text-base ${timer === t ? 'active' : ''}`}
                     >
-                      {t}с
+                      {t}{tr('с')}
                     </button>
                   ))}
                 </div>
@@ -415,27 +417,27 @@ export default function CreateRoom() {
 
               <div className="glass rounded-2xl p-5">
                 <span className="mb-3 block font-semibold">
-                  Описание комнаты <span className="font-normal text-muted">(необязательно)</span>
+                  {tr('Описание комнаты')} <span className="font-normal text-muted">{tr('(необязательно)')}</span>
                 </span>
-                <textarea className="input min-h-[100px]" placeholder="О чём эта игра, для какой аудитории…" value={description} onChange={(e) => setDescription(e.target.value)} />
+                <textarea className="input min-h-[100px]" placeholder={tr('О чём эта игра, для какой аудитории…')} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
 
               <div className="glass rounded-2xl p-5 text-sm">
-                <div className="mb-2 font-semibold">Итог</div>
+                <div className="mb-2 font-semibold">{tr('Итог')}</div>
                 <div className="grid grid-cols-2 gap-2 text-muted sm:grid-cols-4">
                   <div>
-                    Формат: <b className="text-fg">{format && FORMATS[format].label}</b>
+                    {tr('Формат:')} <b className="text-fg">{format && FORMATS[format].label}</b>
                   </div>
                   {format !== 'random' && (
                     <div>
-                      Категорий: <b className="text-fg">{categories.length}</b>
+                      {tr('Категорий:')} <b className="text-fg">{categories.length}</b>
                     </div>
                   )}
                   <div>
-                    Вопросов: <b className="text-fg">{allQuestions.length}</b>
+                    {tr('Вопросов:')} <b className="text-fg">{allQuestions.length}</b>
                   </div>
                   <div>
-                    Таймер: <b className="text-fg">{timer}с</b>
+                    {tr('Таймер:')} <b className="text-fg">{timer}{tr('с')}</b>
                   </div>
                 </div>
               </div>
@@ -459,30 +461,30 @@ export default function CreateRoom() {
 
       <div className="sticky bottom-20 z-20 mt-8 flex justify-between gap-3 md:bottom-4">
         <button onClick={() => goTo(step - 1)} disabled={step === 0} className="btn btn-ghost glass-strong">
-          <ArrowLeft size={18} /> Назад
+          <ArrowLeft size={18} /> {tr('Назад')}
         </button>
         {step < 2 ? (
           <button onClick={() => goTo(step + 1)} className="btn btn-primary">
-            Далее <ArrowRight size={18} />
+            {tr('Далее')} <ArrowRight size={18} />
           </button>
         ) : (
           <button onClick={submit} disabled={saving} className="btn btn-primary px-6">
             {saving && <Loader2 size={18} className="animate-spin" />}
-            {editId ? 'Сохранить изменения' : 'Создать АО'}
+            {editId ? tr('Сохранить изменения') : tr('Создать АО')}
           </button>
         )}
       </div>
 
-      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Удалить комнату?" size="sm">
+      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title={tr('Удалить комнату?')} size="sm">
         <p className="text-muted">
-          Комната «<b className="text-fg">{title}</b>» и все её вопросы будут удалены без возможности восстановления.
+          {tr('Комната «')}<b className="text-fg">{title}</b>{tr('» и все её вопросы будут удалены без возможности восстановления.')}
         </p>
         <div className="mt-6 flex gap-3">
           <button onClick={() => setDeleteOpen(false)} className="btn btn-ghost flex-1">
-            Отмена
+            {tr('Отмена')}
           </button>
           <button onClick={deleteRoom} className="btn flex-1 bg-red-500 text-white hover:bg-red-600">
-            Удалить
+            {tr('Удалить')}
           </button>
         </div>
       </Modal>

@@ -1,7 +1,9 @@
+import { tr } from '../../lib/i18n'
 import { motion } from 'framer-motion'
 import { ArrowRight, Check, Crown, Loader2, Users } from '../../lib/icons'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import LangToggle from '../../components/LangToggle'
 import Logo from '../../components/Logo'
 import { getPlayerToken, playerTokenKey } from '../../hooks/useLive'
 import { api, errorMessage } from '../../lib/api'
@@ -70,14 +72,14 @@ export default function Join() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!validCode) return setError('Код — 6 символов, его показывает ведущий')
-    if (name.trim().length < 2) return setError('Введите своё имя')
+    if (!validCode) return setError(tr('Код — 6 символов, его показывает ведущий'))
+    if (name.trim().length < 2) return setError(tr('Введите своё имя'))
     if (creating) {
-      if (teamName.trim().length < 2) return setError('Введите название команды')
+      if (teamName.trim().length < 2) return setError(tr('Введите название команды'))
       const n = Number(size)
-      if (!Number.isInteger(n) || n < 1 || n > maxSize) return setError(`Сколько вас в команде? Число от 1 до ${maxSize}`)
+      if (!Number.isInteger(n) || n < 1 || n > maxSize) return setError(tr('Сколько вас в команде? Число от 1 до {max}', { max: maxSize }))
     } else if (!teamId) {
-      return setError('Выберите свою команду')
+      return setError(tr('Выберите свою команду'))
     }
 
     setLoading(true)
@@ -91,7 +93,7 @@ export default function Join() {
       navigate(`/play/${code}`, { replace: true })
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status
-      setError(status === 404 ? 'Игра с таким кодом не найдена' : errorMessage(err))
+      setError(status === 404 ? tr('Игра с таким кодом не найдена') : errorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -108,14 +110,18 @@ export default function Join() {
         animate={{ opacity: 1, y: 0 }}
         className="glass relative z-10 w-full max-w-sm rounded-3xl p-6 sm:p-8"
       >
+        {/* Участник заходит по QR с чужого телефона — язык выбирается прямо здесь */}
+        <div className="-mt-2 mb-2 flex justify-end">
+          <LangToggle compact />
+        </div>
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo size={52} />
-          <h1 className="mt-4 text-2xl font-extrabold">Войти в игру</h1>
-          <p className="mt-1 text-sm text-muted">Код показывает ведущий на экране</p>
+          <h1 className="mt-4 text-2xl font-extrabold">{tr('Войти в игру')}</h1>
+          <p className="mt-1 text-sm text-muted">{tr('Код показывает ведущий на экране')}</p>
         </div>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-muted">Код комнаты</span>
+          <span className="mb-1.5 block text-sm font-medium text-muted">{tr('Код комнаты')}</span>
           <input
             className="input text-center font-mono text-3xl font-extrabold uppercase tracking-[0.3em]"
             value={code}
@@ -131,12 +137,12 @@ export default function Join() {
         {game && <div className="mt-2 text-center text-sm text-green">{game.room.title}</div>}
 
         <label className="mt-4 block">
-          <span className="mb-1.5 block text-sm font-medium text-muted">Ваше имя</span>
+          <span className="mb-1.5 block text-sm font-medium text-muted">{tr('Ваше имя')}</span>
           <input
             className="input text-lg"
             value={name}
             maxLength={40}
-            placeholder="Например: Азамат"
+            placeholder={tr('Например: Азамат')}
             onChange={(e) => setName(e.target.value)}
             autoFocus={!!params.code}
           />
@@ -148,7 +154,7 @@ export default function Join() {
             {teams.length > 0 && (
               <div className="mt-5">
                 <span className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-muted">
-                  <Users size={15} /> Ваша команда
+                  <Users size={15} /> {tr('Ваша команда')}
                 </span>
                 <div className="space-y-1.5">
                   {teams.map((t) => {
@@ -176,7 +182,7 @@ export default function Join() {
                         <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: t.color }} />
                         <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
                         <span className="shrink-0 text-xs text-muted tabular-nums">
-                          {t.size ? `${here} из ${t.size}` : here}
+                          {t.size ? tr('{n} из {total}', { n: here, total: t.size }) : here}
                         </span>
                         {picked && <Check size={16} className="shrink-0 text-green" />}
                       </button>
@@ -195,7 +201,7 @@ export default function Join() {
                       creating ? 'border-green bg-green/10 text-green' : 'border-line text-muted hover:border-green/60'
                     }`}
                   >
-                    <Crown size={15} /> Я капитан — завести новую команду
+                    <Crown size={15} /> {tr('Я капитан — завести новую команду')}
                   </button>
                 )}
               </div>
@@ -204,54 +210,53 @@ export default function Join() {
             {creating && (
               <div className="mt-4 rounded-2xl border border-green/40 bg-green/[0.07] p-4">
                 <div className="flex items-center gap-1.5 text-sm font-bold text-green">
-                  <Crown size={15} /> Вы капитан
+                  <Crown size={15} /> {tr('Вы капитан')}
                 </div>
                 <label className="mt-3 block">
-                  <span className="mb-1.5 block text-sm font-medium text-muted">Название команды</span>
+                  <span className="mb-1.5 block text-sm font-medium text-muted">{tr('Название команды')}</span>
                   <input
                     className="input"
                     value={teamName}
                     maxLength={40}
-                    placeholder="Например: Ала-Тоо"
+                    placeholder={tr('Например: Ала-Тоо')}
                     onChange={(e) => setTeamName(e.target.value)}
                   />
                 </label>
                 <label className="mt-3 block">
-                  <span className="mb-1.5 block text-sm font-medium text-muted">Сколько вас в команде</span>
+                  <span className="mb-1.5 block text-sm font-medium text-muted">{tr('Сколько вас в команде')}</span>
                   <input
                     className="input"
                     value={size}
                     disabled={fixedSize}
                     inputMode="numeric"
-                    placeholder={`от 1 до ${maxSize}`}
+                    placeholder={tr('от 1 до {max}', { max: maxSize })}
                     onChange={(e) => setSize(e.target.value.replace(/\D/g, '').slice(0, 2))}
                   />
                 </label>
                 <p className="mt-2 text-xs text-muted">
                   {fixedSize
-                    ? `Ведущий задал состав: ${game.team_size} ${plural(game.team_size, 'игрок', 'игрока', 'игроков')}.`
-                    : 'Считая вас. Остальные войдут по тому же коду и выберут вашу команду.'}
+                    ? tr('Ведущий задал состав: {n} {word}.', { n: game.team_size, word: plural(game.team_size, tr('игрок'), tr('игрока'), tr('игроков')) })
+                    : tr('Считая вас. Остальные войдут по тому же коду и выберут вашу команду.')}
                 </p>
               </div>
             )}
 
             {game.expected_teams > 0 && (
               <div className="mt-3 text-center text-xs text-muted">
-                Команд: {teams.length} из {game.expected_teams}
+                {tr('Команд:')} {teams.length} {tr('из')} {game.expected_teams}
               </div>
             )}
           </>
         )}
 
         <p className="mt-4 text-xs text-muted">
-          Каждый участник входит со своего телефона. Телефон останется у вас, но во время игры будет занят её
-          экраном.
+          {tr('Каждый участник входит со своего телефона. Телефон останется у вас, но во время игры будет занят её экраном.')}
         </p>
 
         {error && <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">{error}</div>}
 
         <button type="submit" disabled={loading} className="btn btn-primary mt-5 w-full py-3.5 text-base">
-          {loading ? <Loader2 size={20} className="animate-spin" /> : <ArrowRight size={20} />} Присоединиться
+          {loading ? <Loader2 size={20} className="animate-spin" /> : <ArrowRight size={20} />} {tr('Присоединиться')}
         </button>
       </motion.form>
     </div>

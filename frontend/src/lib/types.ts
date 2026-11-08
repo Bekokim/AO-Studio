@@ -238,3 +238,27 @@ export interface PlatformStats {
   games: number
   rating: number
 }
+
+/** Календарь активности профиля: по дню на клетку */
+export interface Activity {
+  /** Первый день календаря (ISO, YYYY-MM-DD) */
+  from: string
+  /** Последний день — сегодня */
+  to: string
+  /** Всего событий за период */
+  total: number
+  /** День → что в этот день было сделано */
+  days: Record<string, { rooms: number; games: number }>
+}
+
+/** Строка истории: игра, которую человек провёл сам */
+export interface GameHistoryItem {
+  id: number
+  room: { id: number; title: string; format: GameFormat }
+  mode: 'solo' | 'online' | 'offline'
+  status: 'active' | 'finished'
+  created_at: string
+  /** Команда с лучшим счётом; у одиночной игры и игры с одной командой пусто */
+  winner: string | null
+  teams: { id: number; name: string; color: string; score: number; disqualified: boolean }[]
+}

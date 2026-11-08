@@ -589,3 +589,57 @@ class BoardLaunchTests(LiveMixin, APITestCase):
         res = self.client.patch(f"/api/game/{data['id']}/begin/")
         self.assertEqual(res.status_code, 200, res.data)
         self.assertEqual(GameSession.objects.get(pk=data["id"]).status, GameSession.STATUS_ACTIVE)
+
+
+class GameHistoryTests(APITestCase):
+    """История игр в профиле: только свои и только сыгранные."""
+
+    def setUp(self):
+        self.host = User.objects.create_user(username="historian", email="historian@example.com", password="pwd12345")
+        self.other = User.objects.create_user(username="chuzhoy", email="chuzhoy@example.com", password="pwd12345")
+        self.room = AORoom.objects.create(title="Тест", format="classic", author=self.host)
+
+    def finished(self, host, **kwargs):
+        return GameSession.objects.create(
+            room=self.room, host=host, status=GameSession.STATUS_FINISHED, **kwargs
+        )
+
+    def test_history_lists_own_finished_games_with_winner(self):
+        session = self.finished(self.host, mode=GameSession.MODE_ONLINE)
+        Team.objects.create(session=session, name="Барсы", color="#10B981", score=7)
+        Team.objects.create(session=session, name="Соколы", color="#F59E0B", score=12)
+        self.client.force_authenticate(self.host)
+
+        res = self.client.get("/api/game/history/")
+
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(len(res.data), 1)
+        row = res.data[0]
+        self.assertEqual(row["room"]["title"], "Тест")
+        # Победитель — команда с лучшим счётом, и она же первая в списке
+        self.assertEqual(row["winner"], "Соколы")
+        self.assertEqual([t["name"] for t in row["teams"]], ["Соколы", "Барсы"])
+
+    def test_history_skips_lobby_and_other_hosts(self):
+        GameSession.objects.create(
+            room=self.room, host=self.host, status=GameSession.STATUS_LOBBY, code="LOBBY1"
+        )
+        self.finished(self.other)
+        self.client.force_authenticate(self.host)
+
+        res = self.client.get("/api/game/history/")
+
+        self.assertEqual(res.data, [])
+
+    def test_history_requires_login(self):
+        self.assertEqual(self.client.get("/api/game/history/").status_code, 401)
+
+    def test_disqualified_team_is_not_the_winner(self):
+        session = self.finished(self.host, mode=GameSession.MODE_ONLINE)
+        Team.objects.create(session=session, name="Читеры", color="#EF4444", score=99, disqualified=True)
+        Team.objects.create(session=session, name="Честные", color="#10B981", score=3)
+        self.client.force_authenticate(self.host)
+
+        res = self.client.get("/api/game/history/")
+
+        self.assertEqual(res.data[0]["winner"], "Честные")

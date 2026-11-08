@@ -1,4 +1,5 @@
 import confetti from 'canvas-confetti'
+import { tr } from '../../lib/i18n'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Check, CheckCircle2, Flag, HelpCircle, Home, MinusCircle, RotateCcw, Send, Target, X, XCircle } from '../../lib/icons'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
@@ -143,16 +144,16 @@ export default function Solo() {
           <div className="truncate font-bold leading-tight">{room.title}</div>
           <div className="mt-0.5 flex items-center gap-2">
             <FormatBadge format={room.format} compact />
-            <span className="text-xs text-muted">Одиночная игра</span>
+            <span className="text-xs text-muted">{tr('Одиночная игра')}</span>
           </div>
         </div>
         <div className="text-right">
           <div className="text-2xl font-extrabold leading-none tabular-nums text-green">{score}</div>
-          <div className="text-[11px] text-muted">{plural(score, 'балл', 'балла', 'баллов')}</div>
+          <div className="text-[11px] text-muted">{plural(score, tr('балл'), tr('балла'), tr('баллов'))}</div>
         </div>
         {!finished && (
-          <button onClick={() => setFinishedEarly(true)} className="btn btn-ghost px-3 py-2 text-sm" title="Завершить игру">
-            <Flag size={16} /> <span className="hidden sm:inline">Завершить</span>
+          <button onClick={() => setFinishedEarly(true)} className="btn btn-ghost px-3 py-2 text-sm" title={tr('Завершить игру')}>
+            <Flag size={16} /> <span className="hidden sm:inline">{tr('Завершить')}</span>
           </button>
         )}
       </header>
@@ -161,12 +162,12 @@ export default function Solo() {
         {finished ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass mx-auto max-w-2xl rounded-3xl p-6 text-center sm:p-10">
             <div className="text-6xl">{correctCount === all.length ? '🏆' : correctCount >= all.length / 2 ? '🎉' : '💪'}</div>
-            <h1 className="mt-4 text-3xl font-extrabold">Игра окончена!</h1>
+            <h1 className="mt-4 text-3xl font-extrabold">{tr('Игра окончена!')}</h1>
             <div className="mt-6 grid grid-cols-3 gap-3">
               {[
-                { v: score, l: plural(score, 'балл', 'балла', 'баллов') },
-                { v: `${correctCount}/${all.length}`, l: 'верных ответов' },
-                { v: `${all.length ? Math.round((correctCount / all.length) * 100) : 0}%`, l: 'точность' },
+                { v: score, l: plural(score, tr('балл'), tr('балла'), tr('баллов')) },
+                { v: `${correctCount}/${all.length}`, l: tr('верных ответов') },
+                { v: `${all.length ? Math.round((correctCount / all.length) * 100) : 0}%`, l: tr('точность') },
               ].map((s) => (
                 <div key={s.l} className="rounded-2xl border border-line bg-fg/[0.03] p-4">
                   <div className="text-gradient text-3xl font-extrabold">{s.v}</div>
@@ -177,7 +178,7 @@ export default function Solo() {
 
             {Object.values(results).some((r) => !r.correct) && (
               <div className="mt-8 text-left">
-                <div className="mb-2 text-sm font-semibold uppercase tracking-widest text-muted">Работа над ошибками</div>
+                <div className="mb-2 text-sm font-semibold uppercase tracking-widest text-muted">{tr('Работа над ошибками')}</div>
                 <div className="space-y-2">
                   {all
                     .filter((c) => results[c.q.id] && !results[c.q.id].correct)
@@ -196,7 +197,7 @@ export default function Solo() {
 
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <button onClick={playAgain} className="btn btn-primary px-6">
-                <RotateCcw size={18} /> Сыграть ещё раз
+                <RotateCcw size={18} /> {tr('Сыграть ещё раз')}
               </button>
               <button
                 onClick={() => {
@@ -205,7 +206,7 @@ export default function Solo() {
                 }}
                 className="btn btn-ghost px-6"
               >
-                <Home size={18} /> На главную
+                <Home size={18} /> {tr('На главную')}
               </button>
             </div>
           </motion.div>
@@ -213,10 +214,10 @@ export default function Solo() {
           <>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <p className="flex items-center gap-2 text-muted">
-                <Target size={18} className="text-green" /> Нажмите на любой вопрос и введите ответ
+                <Target size={18} className="text-green" /> {tr('Нажмите на любой вопрос и введите ответ')}
               </p>
               <span className="text-sm text-muted">
-                Отвечено <b className="text-fg">{answered}</b> из {all.length}
+                {tr('Отвечено')} <b className="text-fg">{answered}</b> {tr('из')} {all.length}
               </span>
             </div>
             <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-fg/10">
@@ -295,7 +296,7 @@ function QuestionModal({
             <div>
               {cell.category && <div className="text-sm font-semibold uppercase tracking-widest text-green">{cell.category}</div>}
               <div className="text-gradient mt-1 text-3xl font-extrabold">
-                {cell.points} {plural(cell.points, 'балл', 'балла', 'баллов')}
+                {cell.points} {plural(cell.points, tr('балл'), tr('балла'), tr('баллов'))}
               </div>
             </div>
             {!result && <CircularTimer left={left} total={duration} size={90} running={running} onToggle={() => setRunning((r) => !r)} />}
@@ -315,14 +316,14 @@ function QuestionModal({
                 <div className={`text-2xl font-extrabold ${result.correct ? 'text-green' : 'text-red-400'}`}>
                   <span className="inline-flex items-center gap-2">
                     {result.correct ? <CheckCircle2 size={24} /> : result.given ? <XCircle size={24} /> : <MinusCircle size={24} />}
-                    {result.correct ? `Верно! +${cell.points}` : result.given ? 'Неверно' : 'Без ответа'}
+                    {result.correct ? tr('Верно! +{n}', { n: cell.points }) : result.given ? tr('Неверно') : tr('Без ответа')}
                   </span>
                 </div>
-                {!result.correct && result.given && <div className="mt-2 text-muted">Ваш ответ: {result.given}</div>}
-                <div className="mt-3 text-sm uppercase tracking-widest text-muted">Правильный ответ</div>
+                {!result.correct && result.given && <div className="mt-2 text-muted">{tr('Ваш ответ:')} {result.given}</div>}
+                <div className="mt-3 text-sm uppercase tracking-widest text-muted">{tr('Правильный ответ')}</div>
                 <div className="mt-1 text-xl font-bold text-green">{cell.q.answer}</div>
                 <button onClick={onClose} className="btn btn-primary mt-5 px-6" autoFocus>
-                  Дальше <ArrowRight size={18} />
+                  {tr('Дальше')} <ArrowRight size={18} />
                 </button>
               </motion.div>
             ) : (
@@ -331,18 +332,18 @@ function QuestionModal({
                   <input
                     ref={inputRef}
                     className="input py-3.5 text-lg"
-                    placeholder="Ваш ответ"
+                    placeholder={tr('Ваш ответ')}
                     value={text}
                     maxLength={500}
                     autoComplete="off"
                     onChange={(e) => setText(e.target.value)}
                   />
                   <button type="submit" disabled={!text.trim()} className="btn btn-primary px-5">
-                    <Send size={20} /> <span className="hidden sm:inline">Ответить</span>
+                    <Send size={20} /> <span className="hidden sm:inline">{tr('Ответить')}</span>
                   </button>
                 </div>
                 <button type="button" onClick={() => onSubmit(cell, '')} className="mt-3 flex items-center gap-1.5 text-sm text-muted hover:text-fg">
-                  <HelpCircle size={15} /> Не знаю — показать ответ
+                  <HelpCircle size={15} /> {tr('Не знаю — показать ответ')}
                 </button>
               </motion.form>
             )}

@@ -7,6 +7,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
+import { tr } from '../lib/i18n'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -49,7 +50,7 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
   const pickPhoto = (f: File | undefined) => {
     if (!f || !f.type.startsWith('image/')) return
     if (f.size > 8 * 1024 * 1024) {
-      alert('Фото больше 8 МБ')
+      alert(tr('Фото больше 8 МБ'))
       return
     }
     onChange({ ...q, photoFile: f, photoUrl: URL.createObjectURL(f), removePhoto: false })
@@ -73,7 +74,7 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
             {...attributes}
             {...listeners}
             className="cursor-grab touch-none rounded-lg p-1 text-muted hover:bg-fg/5 hover:text-fg active:cursor-grabbing"
-            aria-label="Перетащить вопрос"
+            aria-label={tr('Перетащить вопрос')}
           >
             <GripVertical size={18} />
           </button>
@@ -83,21 +84,21 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
         <div className="min-w-0 flex-1 space-y-3">
           <textarea
             className={`input min-h-[76px] resize-y ${textErr ? 'invalid' : ''}`}
-            placeholder="Текст вопроса"
+            placeholder={tr('Текст вопроса')}
             value={q.text}
             onChange={(e) => onChange({ ...q, text: e.target.value })}
           />
           <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
             <input
               className={`input ${ansErr ? 'invalid' : ''}`}
-              placeholder="Правильный ответ"
+              placeholder={tr('Правильный ответ')}
               value={q.answer}
               maxLength={500}
               onChange={(e) => onChange({ ...q, answer: e.target.value })}
             />
             {withPoints ? (
               <label className="flex items-center gap-2">
-                <span className="text-sm text-muted">Баллы</span>
+                <span className="text-sm text-muted">{tr('Баллы')}</span>
                 <select className="input w-20" value={q.points} onChange={(e) => onChange({ ...q, points: Number(e.target.value) })}>
                   {Array.from({ length: 5 }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
@@ -107,7 +108,7 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
                 </select>
               </label>
             ) : (
-              <span className="flex items-center text-sm text-muted">1 балл</span>
+              <span className="flex items-center text-sm text-muted">{tr('1 балл')}</span>
             )}
           </div>
 
@@ -117,7 +118,7 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
               <div key={i} className="flex gap-2">
                 <input
                   className="input"
-                  placeholder="Ещё вариант ответа"
+                  placeholder={tr('Ещё вариант ответа')}
                   value={alt}
                   maxLength={500}
                   onChange={(e) => {
@@ -130,7 +131,7 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
                   type="button"
                   onClick={() => onChange({ ...q, altAnswers: q.altAnswers.filter((_, j) => j !== i) })}
                   className="btn btn-ghost shrink-0 px-3"
-                  aria-label="Убрать вариант"
+                  aria-label={tr('Убрать вариант')}
                 >
                   <X size={16} />
                 </button>
@@ -142,12 +143,12 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
                 onClick={() => onChange({ ...q, altAnswers: [...q.altAnswers, ''] })}
                 className="text-sm text-green hover:underline"
               >
-                + Добавить вариант ответа
+                {tr('+ Добавить вариант ответа')}
               </button>
             )}
             {q.altAnswers.length === 0 && (
               <p className="text-xs text-muted">
-                Можно добавить другие формулировки — например «Бишкек» и «город Бишкек». Засчитываются все.
+                {tr('Можно добавить другие формулировки — например «Бишкек» и «город Бишкек». Засчитываются все.')}
               </p>
             )}
           </div>
@@ -160,14 +161,14 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
                   type="button"
                   onClick={() => onChange({ ...q, photoFile: null, photoUrl: null, removePhoto: !!q.id })}
                   className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white shadow"
-                  aria-label="Удалить фото"
+                  aria-label={tr('Удалить фото')}
                 >
                   <X size={14} />
                 </button>
               </div>
             ) : (
               <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-ghost px-3 py-2 text-sm">
-                <ImagePlus size={16} /> Добавить фото
+                <ImagePlus size={16} /> {tr('Добавить фото')}
               </button>
             )}
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => pickPhoto(e.target.files?.[0])} />
@@ -177,7 +178,7 @@ function QuestionCard({ q, index, showErrors, onChange, onDelete, canDelete, wit
               onClick={onDelete}
               disabled={!canDelete}
               className="rounded-lg p-2 text-muted transition hover:bg-red-400/10 hover:text-red-400 disabled:opacity-30"
-              aria-label="Удалить вопрос"
+              aria-label={tr('Удалить вопрос')}
             >
               <Trash2 size={18} />
             </button>
@@ -239,7 +240,7 @@ export default function QuestionList({ questions, onChange, showErrors, allowEmp
         onClick={() => onChange([...questions, newQuestion(withPoints ? Math.min(5, (questions.at(-1)?.points ?? 0) + 1) : 1)])}
         className="btn btn-ghost w-full border-dashed"
       >
-        <Plus size={18} /> Добавить вопрос
+        <Plus size={18} /> {tr('Добавить вопрос')}
       </button>
     </div>
   )

@@ -1,6 +1,7 @@
 import FormatIcon from '../components/FormatIcon'
+import { tr } from '../lib/i18n'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Loader2, Search, SlidersHorizontal, X } from '../lib/icons'
+import { Loader2, Plus, Search, SlidersHorizontal, X } from '../lib/icons'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import RoomCard from '../components/RoomCard'
@@ -97,23 +98,30 @@ export default function Rooms() {
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 md:py-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold sm:text-4xl">AO комнаты</h1>
-          <p className="mt-1 text-muted">Готовые игры от сообщества — выбирайте и играйте</p>
+          <h1 className="text-3xl font-extrabold sm:text-4xl">{tr('AO комнаты')}</h1>
+          <p className="mt-1 text-muted">{tr('Готовые игры от сообщества — выбирайте и играйте')}</p>
         </div>
+        {/* Создание переехало из навбара сюда: отсюда до него один шаг с любой страницы списка */}
+        <button
+          onClick={() => (user ? navigate('/create') : openAuth('register', () => navigate('/create')))}
+          className="btn btn-primary"
+        >
+          <Plus size={18} /> {tr('Создать АО')}
+        </button>
       </div>
 
       <div className="glass mb-8 space-y-4 rounded-2xl p-4 sm:p-5">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-            <input className="input pl-10" placeholder="Поиск по названию комнаты…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input pl-10" placeholder={tr('Поиск по названию комнаты…')} value={search} onChange={(e) => setSearch(e.target.value)} />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-fg" aria-label="Очистить">
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-fg" aria-label={tr('Очистить')}>
                 <X size={16} />
               </button>
             )}
           </div>
-          <button onClick={() => setFiltersOpen((o) => !o)} className={`btn btn-ghost relative px-3.5 md:hidden ${filtersOpen ? 'border-green text-green' : ''}`} aria-label="Фильтры">
+          <button onClick={() => setFiltersOpen((o) => !o)} className={`btn btn-ghost relative px-3.5 md:hidden ${filtersOpen ? 'border-green text-green' : ''}`} aria-label={tr('Фильтры')}>
             <SlidersHorizontal size={18} />
             {activeFilters > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-green text-[10px] font-bold text-white">
@@ -124,23 +132,23 @@ export default function Rooms() {
         </div>
 
         <ChipGroup<Show>
-          label="Показать"
+          label={tr('Показать')}
           value={show}
           onChange={changeShow}
           options={[
-            { value: 'all', label: 'Все комнаты' },
-            { value: 'mine', label: 'Мои комнаты' },
-            { value: 'saved', label: 'Сохранённые' },
+            { value: 'all', label: tr('Все комнаты') },
+            { value: 'mine', label: tr('Мои комнаты') },
+            { value: 'saved', label: tr('Сохранённые') },
           ]}
         />
 
         <div className={`${filtersOpen ? 'block' : 'hidden'} space-y-4 md:block`}>
           <ChipGroup<'' | GameFormat>
-            label="Формат"
+            label={tr('Формат')}
             value={fmt}
             onChange={setFmt}
             options={[
-              { value: '', label: 'Все' },
+              { value: '', label: tr('Все') },
               ...(Object.keys(FORMATS) as GameFormat[]).map((f) => ({
                 value: f,
                 label: (
@@ -152,11 +160,11 @@ export default function Rooms() {
             ]}
           />
           <ChipGroup<QCount>
-            label="Вопросов"
+            label={tr('Вопросов')}
             value={qcount}
             onChange={setQcount}
             options={[
-              { value: '', label: 'Все' },
+              { value: '', label: tr('Все') },
               { value: '5-10', label: '5–10' },
               { value: '10-20', label: '10–20' },
               { value: '20+', label: '20+' },
@@ -164,7 +172,7 @@ export default function Rooms() {
           />
           {allCats.length > 0 && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-              <span className="w-28 shrink-0 pt-2 text-xs font-semibold uppercase tracking-wider text-muted">Категории</span>
+              <span className="w-28 shrink-0 pt-2 text-xs font-semibold uppercase tracking-wider text-muted">{tr('Категории')}</span>
               <div className="flex flex-wrap gap-2">
                 {allCats.map((c) => {
                   const on = cats.includes(c)
@@ -179,7 +187,7 @@ export default function Rooms() {
           )}
           {activeFilters > 0 && (
             <button onClick={reset} className="text-sm text-green hover:underline">
-              Сбросить фильтры ({activeFilters})
+              {tr('Сбросить фильтры (')}{activeFilters})
             </button>
           )}
         </div>
@@ -192,12 +200,12 @@ export default function Rooms() {
       ) : rooms.length === 0 ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-3xl py-20 text-center">
           <div className="text-5xl">🔍</div>
-          <h3 className="mt-4 text-xl font-bold">Ничего не найдено</h3>
+          <h3 className="mt-4 text-xl font-bold">{tr('Ничего не найдено')}</h3>
           <p className="mt-1 text-muted">
-            {show === 'saved' ? 'Вы ещё не сохранили ни одной комнаты' : 'Попробуйте изменить запрос или фильтры'}
+            {show === 'saved' ? tr('Вы ещё не сохранили ни одной комнаты') : tr('Попробуйте изменить запрос или фильтры')}
           </p>
           <button onClick={() => (user ? navigate('/create') : openAuth('register', () => navigate('/create')))} className="btn btn-primary mt-6">
-            Создать свою АО
+            {tr('Создать свою АО')}
           </button>
         </motion.div>
       ) : (

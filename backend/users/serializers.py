@@ -17,7 +17,9 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "email", "created_at"]
 
     def get_rooms_count(self, obj):
-        return obj.rooms.count()
+        # Только свои комнаты: сохранённые копии чужих игр считаются отдельно,
+        # иначе число в профиле не сходится со списком «Созданные AO комнаты»
+        return obj.rooms.filter(saved_from__isnull=True).count()
 
     def get_games_played(self, obj):
         return obj.hosted_sessions.count()

@@ -310,3 +310,51 @@ class GameParticipantPardonView(APIView):
             if team.disqualified and team.participants.filter(disqualified=True).count() < PARTICIPANTS_DQ_ALLOWED:
                 clear_dq(team)
         return Response({"ok": True, "participant_id": participant.id, "team_id": team.id})
+
+
+class GameHistoryView(APIView):
+    """
+    История игр, которые человек провёл сам: что за комната, когда и с каким счётом.
+
+    Берём только сыгранное — лобби, которое так и не началось, историей не является
+    и только засоряло бы список. Команды отдаём сразу, одним запросом с подгрузкой:
+    иначе на полсотни игр ушло бы полсотни запросов в базу.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    LIMIT = 50
+
+    def get(self, request):
+        sessions = (
+            GameSession.objects.filter(host=request.user)
+            .exclude(status=GameSession.STATUS_LOBBY)
+            .select_related("room")
+            .prefetch_related("teams")
+            .order_by("-created_at")[: self.LIMIT]
+        )
+        data = []
+        for s in sessions:
+            teams = sorted(s.teams.all(), key=lambda t: (t.disqualified, -t.score))
+            winner = next((t for t in teams if not t.disqualified), None)
+            data.append(
+                {
+                    "id": s.pk,
+                    "room": {"id": s.room_id, "title": s.room.title, "format": s.room.format},
+                    "mode": s.mode,
+                    "status": s.status,
+                    "created_at": s.created_at,
+                    "winner": winner.name if winner and len(teams) > 1 else None,
+                    "teams": [
+                        {
+                            "id": t.pk,
+                            "name": t.name,
+                            "color": t.color,
+                            "score": t.score,
+                            "disqualified": t.disqualified,
+                        }
+                        for t in teams
+                    ],
+                }
+            )
+        return Response(data)

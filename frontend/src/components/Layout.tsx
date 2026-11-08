@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
-import { BookOpen, Home, Info, LogIn, Monitor, Moon, PlusCircle, Puzzle, QrCode, Sun, User as UserIcon } from '../lib/icons'
+import { tr } from '../lib/i18n'
+import { BookOpen, Home, Info, LogIn, Monitor, Moon, Puzzle, QrCode, Sun, User as UserIcon } from '../lib/icons'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useUI } from '../store/ui'
 import Avatar from './Avatar'
 import FloatingEmojis from './FloatingEmojis'
+import LangToggle from './LangToggle'
 import Logo from './Logo'
 
 function ThemeToggle({ withLabel }: { withLabel?: boolean }) {
@@ -13,10 +15,10 @@ function ThemeToggle({ withLabel }: { withLabel?: boolean }) {
     <button
       onClick={toggleTheme}
       className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-muted transition hover:bg-fg/5 hover:text-fg"
-      aria-label="Сменить тему"
+      aria-label={tr('Сменить тему')}
     >
       {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-      {withLabel && <span className="text-sm">{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span>}
+      {withLabel && <span className="text-sm">{theme === 'dark' ? tr('Светлая тема') : tr('Тёмная тема')}</span>}
     </button>
   )
 }
@@ -73,8 +75,6 @@ export default function Layout() {
     scrollToAbout()
   }
 
-  const goCreate = () => (user ? navigate('/create') : openAuth('register', () => navigate('/create')))
-
   // «Инфо» — на главную, к футеру с контактами
   const goInfo = () => {
     if (location.pathname !== '/') navigate('/')
@@ -92,35 +92,33 @@ export default function Layout() {
           <Logo />
           <div>
             <div className="text-lg font-extrabold leading-tight">AO Studio</div>
-            <div className="text-xs text-muted">Акыл Ордо</div>
+            <div className="text-xs text-muted">{tr('Акыл Ордо')}</div>
           </div>
         </button>
 
         <nav className="flex flex-col gap-1">
           <NavLink to="/" end className={navCls}>
-            <Home size={20} /> Главная
+            <Home size={20} /> {tr('Главная')}
           </NavLink>
           <button onClick={onLogo} className={navCls({ isActive: false })}>
-            <BookOpen size={20} /> Об игре АО
+            <BookOpen size={20} /> {tr('Об игре АО')}
           </button>
           <NavLink to="/rooms" className={navCls}>
-            <Puzzle size={20} /> AO комнаты
+            <Puzzle size={20} /> {tr('AO комнаты')}
           </NavLink>
           <NavLink to="/board" className={navCls}>
-            <Monitor size={20} /> Доска
+            <Monitor size={20} /> {tr('Доска')}
           </NavLink>
           <NavLink to="/connect" className={navCls}>
-            <QrCode size={20} /> Присоединиться
+            <QrCode size={20} /> {tr('Присоединиться')}
           </NavLink>
-          <button onClick={goCreate} className={navCls({ isActive: location.pathname === '/create' })}>
-            <PlusCircle size={20} /> Создать АО
-          </button>
           <button onClick={goInfo} className={navCls({ isActive: false })}>
-            <Info size={20} /> Инфо
+            <Info size={20} /> {tr('Инфо')}
           </button>
         </nav>
 
         <div className="mt-auto flex flex-col gap-1">
+          <LangToggle />
           <ThemeToggle withLabel />
           {user ? (
             <NavLink to="/profile" className={navCls}>
@@ -129,7 +127,7 @@ export default function Layout() {
             </NavLink>
           ) : (
             <button onClick={() => openAuth('login')} className={navCls({ isActive: false })}>
-              <LogIn size={20} /> Войти
+              <LogIn size={20} /> {tr('Войти')}
             </button>
           )}
         </div>
@@ -141,7 +139,10 @@ export default function Layout() {
           <Logo size={30} />
           <span className="font-extrabold">AO Studio</span>
         </button>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <LangToggle compact />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="relative z-10 pb-24 md:ml-64 md:pb-0">
@@ -159,10 +160,10 @@ export default function Layout() {
       {/* Bottom navigation — мобильные */}
       <nav className="glass fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around rounded-none border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] md:hidden">
         {[
-          { to: '/', icon: Home, label: 'Главная', end: true },
-          { to: '/rooms', icon: Puzzle, label: 'Комнаты' },
-          { to: '/board', icon: Monitor, label: 'Доска' },
-          { to: '/connect', icon: QrCode, label: 'Код' },
+          { to: '/', icon: Home, label: tr('Главная'), end: true },
+          { to: '/rooms', icon: Puzzle, label: tr('Комнаты') },
+          { to: '/board', icon: Monitor, label: tr('Доска') },
+          { to: '/connect', icon: QrCode, label: tr('Код') },
         ].map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to}
@@ -176,13 +177,6 @@ export default function Layout() {
             {label}
           </NavLink>
         ))}
-        <button
-          onClick={goCreate}
-          className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${location.pathname === '/create' ? 'text-green' : 'text-muted'}`}
-        >
-          <PlusCircle size={22} />
-          Создать
-        </button>
         {user ? (
           <NavLink
             to="/profile"
@@ -191,12 +185,12 @@ export default function Layout() {
             }
           >
             <Avatar name={user.username} src={user.avatar} size={22} />
-            Профиль
+            {tr('Профиль')}
           </NavLink>
         ) : (
           <button onClick={() => openAuth('login')} className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted">
             <UserIcon size={22} />
-            Войти
+            {tr('Войти')}
           </button>
         )}
       </nav>

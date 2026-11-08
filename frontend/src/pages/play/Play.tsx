@@ -1,3 +1,4 @@
+import { tr } from '../../lib/i18n'
 import confetti from 'canvas-confetti'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle, Ban, Check, CheckCircle2, Crown, Loader2, Lock, LockKeyhole, LogOut, Pencil, Send, ShieldCheck, Trophy, Users, Wifi, WifiOff, X } from '../../lib/icons'
@@ -45,7 +46,7 @@ function Standings({ teams, meId }: { teams: Team[]; meId?: number }) {
           </span>
           <span className="min-w-0 flex-1">
             <TeamChip team={t} />
-            {t.disqualified && <span className="ml-1.5 text-xs font-semibold text-red-400">бан</span>}
+            {t.disqualified && <span className="ml-1.5 text-xs font-semibold text-red-400">{tr('бан')}</span>}
           </span>
           <span className={`text-lg font-extrabold tabular-nums ${t.disqualified ? 'text-muted line-through' : ''}`}>{t.score}</span>
         </motion.div>
@@ -68,19 +69,19 @@ function Roster({ team, meId }: { team: Team; meId: number }) {
         >
           <span className="min-w-0 flex-1 truncate font-semibold">
             {p.name}
-            {p.id === meId && <span className="ml-1.5 text-xs font-normal text-muted">— это вы</span>}
+            {p.id === meId && <span className="ml-1.5 text-xs font-normal text-muted">{tr('— это вы')}</span>}
           </span>
           {p.is_captain && (
-            <span title="Капитан" className="shrink-0 text-yellow-400">
+            <span title={tr('Капитан')} className="shrink-0 text-yellow-400">
               <Crown size={14} fill="currentColor" />
             </span>
           )}
           {p.is_answerer && !p.disqualified && (
-            <span className="shrink-0 rounded-md bg-green/15 px-1.5 py-0.5 text-[11px] font-bold text-green">отвечает</span>
+            <span className="shrink-0 rounded-md bg-green/15 px-1.5 py-0.5 text-[11px] font-bold text-green">{tr('отвечает')}</span>
           )}
           {p.is_next_answerer && !p.is_answerer && !p.disqualified && (
             <span className="shrink-0 rounded-md bg-yellow-400/15 px-1.5 py-0.5 text-[11px] font-bold text-yellow-400">
-              следующий
+              {tr('следующий')}
             </span>
           )}
           {p.disqualified && <Ban size={14} className="shrink-0 text-red-400" />}
@@ -88,7 +89,7 @@ function Roster({ team, meId }: { team: Team; meId: number }) {
       ))}
       {team.size ? (
         <div className="pt-1 text-center text-xs text-muted">
-          {list.length} из {team.size} {plural(team.size, 'участника', 'участников', 'участников')} на месте
+          {list.length} {tr('из')} {team.size} {plural(team.size, tr('участника'), tr('участников'), tr('участников'))} {tr('на месте')}
         </div>
       ) : null}
     </div>
@@ -98,15 +99,20 @@ function Roster({ team, meId }: { team: Team; meId: number }) {
 /**
  * Капитан выбирает из состава того, кто пишет ответы.
  *
- * До старта это и есть готовность команды. В игре список доступен всегда: пока открыт
- * текущий вопрос, подменить отвечающего нельзя (это тянуло бы время), поэтому выбор
- * запоминается и вступает в силу на следующем вопросе — об этом и говорит подпись.
+ * До старта это и есть готовность команды, и выбирают его из полного состава: пока не
+ * подключились все заявленные участники, список ждёт — иначе капитан назначил бы
+ * отвечающего из половины команды. Если кто-то так и не пришёл, ожидание снимается вручную.
+ *
+ * В игре список доступен всегда: пока открыт текущий вопрос, подменить отвечающего нельзя
+ * (это тянуло бы время), поэтому выбор запоминается и вступает в силу на следующем
+ * вопросе — об этом и говорит подпись.
  */
 function AnswererPicker({
   code,
   team,
   meId,
   queues,
+  awaitFull,
   onDone,
 }: {
   code: string
@@ -114,12 +120,17 @@ function AnswererPicker({
   meId: number
   /** Сейчас идёт вопрос — выбор достанется следующему */
   queues?: boolean
+  /** Лобби: ждать, пока соберётся весь заявленный состав */
+  awaitFull?: boolean
   onDone?: () => void
 }) {
   const [saving, setSaving] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [skipWait, setSkipWait] = useState(false)
   const list = (team.participants ?? []).filter((p) => !p.disqualified)
   const out = (team.participants ?? []).filter((p) => p.disqualified)
+  const missing = awaitFull && team.size ? team.size - (team.participants?.length ?? 0) : 0
+  const waiting = missing > 0 && !skipWait
 
   const choose = async (p: Participant) => {
     setSaving(p.id)
@@ -137,36 +148,38 @@ function AnswererPicker({
   return (
     <div>
       <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted">
-        <Pencil size={13} /> {queues ? 'Кто отвечает на следующий вопрос' : 'Кто пишет ответы'}
+        <Pencil size={13} /> {queues ? tr('Кто отвечает на следующий вопрос') : tr('Кто пишет ответы')}
       </div>
       <p className="mb-2.5 text-xs text-muted">
-        {queues
-          ? 'Сейчас идёт вопрос — выбор вступит в силу, когда ведущий откроет следующий.'
-          : 'Выберите участника из состава команды.'}
+        {waiting
+          ? tr('Ждём, пока соберётся вся команда — не хватает {n} {word}.', { n: missing, word: plural(missing, tr('участника'), tr('участников'), tr('участников')) })
+          : queues
+            ? tr('Сейчас идёт вопрос — выбор вступит в силу, когда ведущий откроет следующий.')
+            : tr('Выберите участника из состава команды.')}
       </p>
-      <div className="space-y-1.5">
+      <div className={`space-y-1.5 ${waiting ? 'pointer-events-none opacity-40' : ''}`}>
         {list.map((p) => {
           const picked = queues ? p.is_next_answerer || (!team.next_answerer_id && p.is_answerer) : p.is_answerer
           return (
             <button
               key={p.id}
               onClick={() => choose(p)}
-              disabled={saving !== null}
+              disabled={saving !== null || waiting}
               className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition ${
                 picked ? 'border-green bg-green/10' : 'border-line hover:border-green/60'
               }`}
             >
               <span className="min-w-0 flex-1 truncate font-semibold">
                 {p.name}
-                {p.id === meId && <span className="ml-1.5 text-xs font-normal text-muted">— это вы</span>}
+                {p.id === meId && <span className="ml-1.5 text-xs font-normal text-muted">{tr('— это вы')}</span>}
               </span>
               {p.is_captain && (
-                <span title="Капитан" className="shrink-0 text-yellow-400">
+                <span title={tr('Капитан')} className="shrink-0 text-yellow-400">
                   <Crown size={12} fill="currentColor" />
                 </span>
               )}
               {p.is_answerer && queues && (
-                <span className="shrink-0 text-[11px] font-semibold text-muted">сейчас</span>
+                <span className="shrink-0 text-[11px] font-semibold text-muted">{tr('сейчас')}</span>
               )}
               {saving === p.id ? (
                 <Loader2 size={15} className="shrink-0 animate-spin text-green" />
@@ -177,9 +190,15 @@ function AnswererPicker({
           )
         })}
       </div>
+      {/* Заявили больше, чем пришло, — играть всё равно надо */}
+      {waiting && (
+        <button onClick={() => setSkipWait(true)} className="mt-2.5 text-xs text-green hover:underline">
+          {tr('Больше никто не придёт — выбрать сейчас')}
+        </button>
+      )}
       {out.length > 0 && (
         <div className="mt-2 text-xs text-muted">
-          В бане, выбрать нельзя: {out.map((p) => p.name).join(', ')}
+          {tr('В бане, выбрать нельзя:')} {out.map((p) => p.name).join(', ')}
         </div>
       )}
       {error && <div className="mt-2 text-sm text-red-400">{error}</div>}
@@ -187,31 +206,37 @@ function AnswererPicker({
   )
 }
 
-/** Экран участника, который сейчас не отвечает: телефон занят игрой */
+/**
+ * Экран участника, который сейчас не отвечает: телефон занят игрой.
+ *
+ * Правила здесь написаны целиком, а не намёком: это единственный экран, который такой
+ * участник видит всю игру, и спрашивать «а что будет, если…» ему не у кого.
+ */
 function LockedScreen({ team, meId, answerer }: { team: Team; meId: number; answerer?: Participant }) {
   return (
     <div className="glass rounded-3xl p-6 text-center">
       <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ repeat: Infinity, duration: 2.5 }} className="inline-block">
         <Lock className="text-green" size={46} />
       </motion.div>
-      <h1 className="mt-3 text-xl font-extrabold">Телефон занят игрой</h1>
+      <h1 className="mt-3 text-xl font-extrabold">{tr('Телефон занят игрой')}</h1>
       <p className="mt-2 text-muted">
         {answerer ? (
           <>
-            За команду отвечает <b className="text-fg">{answerer.name}</b>. Подсказывайте вслух — а телефон пусть
-            остаётся на этом экране.
+            {tr('За команду отвечает')} <b className="text-fg">{answerer.name}</b>{tr('. Подсказывайте вслух, а телефон можно просто отложить — экран мы держим включённым сами.')}
           </>
         ) : (
-          <>Капитан ещё не назначил, кто пишет ответы.</>
+          <>{tr('Капитан ещё не назначил, кто пишет ответы.')}</>
         )}
       </p>
       <div className="mt-4 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-3.5 text-left text-sm">
         <div className="flex items-center gap-2 font-bold text-yellow-400">
-          <AlertTriangle size={15} /> Не уходите с этого экрана
+          <AlertTriangle size={15} /> {tr('Что считается нарушением')}
         </div>
-        <p className="mt-1 text-muted">
-          Свернуть игру, открыть другую вкладку или погасить экран — нарушение. Экран мы держим включённым сами.
-        </p>
+        <ul className="mt-1.5 space-y-1 text-muted">
+          <li>{tr('— выйти из игры или открыть поверх неё другое окно;')}</li>
+          <li>{tr('— первый раз это предупреждение, второй — бан игроку;')}</li>
+          <li>{tr('— забанят двоих из команды — вся команда выбывает.')}</li>
+        </ul>
       </div>
       <div className="mt-5 text-left">
         <Roster team={team} meId={meId} />
@@ -226,33 +251,33 @@ function ArmGate({ warnings, allowed, onArm }: { warnings: number; allowed: numb
   return (
     <div className="glass rounded-3xl p-6 text-center">
       <LockKeyhole className="mx-auto text-green" size={44} />
-      <h1 className="mt-3 text-2xl font-extrabold">{returning ? 'Вернитесь в игру' : 'Защищённый режим'}</h1>
+      <h1 className="mt-3 text-2xl font-extrabold">{returning ? tr('Вернитесь в игру') : tr('Защищённый режим')}</h1>
       <p className="mt-2 text-muted">
-        Включите его до старта: игра раскроется на весь экран, и вы не потеряете время на вопросах.
+        {tr('Включите его до старта: игра раскроется на весь экран, и вы не потеряете время на вопросах.')}
       </p>
       <ul className="mt-5 space-y-2 text-left text-sm text-muted">
         <li className="flex gap-2">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-yellow-400" />
-          Нельзя сворачивать игру, открывать другие вкладки и приложения.
+          {tr('Нельзя сворачивать игру, открывать другие вкладки и приложения.')}
         </li>
         <li className="flex gap-2">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-yellow-400" />
           {allowed > 0
-            ? 'Первый уход с экрана — предупреждение, второй — бан.'
-            : 'Любой уход с экрана — бан.'}
+            ? tr('Первый уход с экрана — предупреждение, второй — бан.')
+            : tr('Любой уход с экрана — бан.')}
         </li>
         <li className="flex gap-2">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-yellow-400" />
-          Забанили двоих из команды — бан всей команде.
+          {tr('Забанили двоих из команды — бан всей команде.')}
         </li>
       </ul>
       {returning && (
         <div className="mt-5 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 px-4 py-3 text-sm font-semibold text-yellow-400">
-          У вас {warnings} из {allowed + 1} нарушений. Ещё одно — бан.
+          {tr('У вас')} {warnings} {tr('из')} {allowed + 1} {tr('нарушений. Ещё одно — бан.')}
         </div>
       )}
       <button onClick={onArm} className="btn btn-primary mt-6 w-full py-3.5 text-base">
-        <ShieldCheck size={20} /> {returning ? 'Вернуться в игру' : 'Войти в игру'}
+        <ShieldCheck size={20} /> {returning ? tr('Вернуться в игру') : tr('Войти в игру')}
       </button>
     </div>
   )
@@ -264,7 +289,7 @@ function DqScreen({ title, reason, note, teams, meTeamId }: { title: string; rea
     <div className="glass rounded-3xl border-red-400/40 p-6 text-center">
       <Ban className="mx-auto text-red-400" size={48} />
       <h1 className="mt-3 text-2xl font-extrabold text-red-400">{title}</h1>
-      <p className="mt-2 text-muted">{reason || 'Вы покинули экран игры.'}</p>
+      <p className="mt-2 text-muted">{reason || tr('Вы покинули экран игры.')}</p>
       <p className="mt-3 text-sm text-muted">{note}</p>
       <div className="mt-6 text-left">
         <Standings teams={teams} meId={meTeamId} />
@@ -314,10 +339,10 @@ function AnswerBox({ code, questionId, current }: { code: string; questionId: nu
     return (
       <div className="mt-5 rounded-2xl border border-green/40 bg-green/10 p-4">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-green">
-          <Check size={16} /> Ответ отправлен
+          <Check size={16} /> {tr('Ответ отправлен')}
         </div>
         <div className="mt-1 text-lg font-bold">{sent}</div>
-        <div className="mt-1.5 text-xs text-muted">Изменить его уже нельзя — ждём остальных.</div>
+        <div className="mt-1.5 text-xs text-muted">{tr('Изменить его уже нельзя — ждём остальных.')}</div>
       </div>
     )
   }
@@ -327,7 +352,7 @@ function AnswerBox({ code, questionId, current }: { code: string; questionId: nu
       <div className="flex gap-2">
         <input
           className="input py-3.5 text-lg"
-          placeholder="Ваш ответ"
+          placeholder={tr('Ваш ответ')}
           value={text}
           maxLength={500}
           onChange={(e) => setText(e.target.value)}
@@ -337,7 +362,7 @@ function AnswerBox({ code, questionId, current }: { code: string; questionId: nu
           {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
         </button>
       </div>
-      <div className="mt-2 text-xs text-muted">Ответ отправляется один раз — проверьте перед отправкой.</div>
+      <div className="mt-2 text-xs text-muted">{tr('Ответ отправляется один раз — проверьте перед отправкой.')}</div>
       {error && <div className="mt-2 text-sm text-red-400">{error}</div>}
     </form>
   )
@@ -409,12 +434,12 @@ function Board({
       <div className={`mb-4 rounded-2xl border p-3 text-center font-bold ${myTurn ? 'border-green bg-green/15 text-green' : 'border-line'}`}>
         {myTurn ? (
           <motion.span animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="inline-block">
-            Ваш ход! Выберите {columns ? 'вопрос' : 'карточку'}
+            {tr('Ваш ход! Выберите')} {columns ? tr('вопрос') : tr('карточку')}
           </motion.span>
         ) : data.state.active_team === myTeamId ? (
-          <span className="text-muted">Ход вашей команды — выбирает тот, кто пишет ответы</span>
+          <span className="text-muted">{tr('Ход вашей команды — выбирает тот, кто пишет ответы')}</span>
         ) : (
-          <span className="text-muted">Выбирает: {activeTeam ? <TeamChip team={activeTeam} /> : '…'}</span>
+          <span className="text-muted">{tr('Выбирает:')} {activeTeam ? <TeamChip team={activeTeam} /> : '…'}</span>
         )}
       </div>
       {error && <div className="mb-3 text-center text-sm text-red-400">{error}</div>}
@@ -488,9 +513,9 @@ export default function Play() {
     return (
       <Centered>
         <div className="text-5xl">🔍</div>
-        <h1 className="mt-3 text-xl font-bold">Игра не найдена</h1>
-        <p className="mt-1 text-muted">Проверьте код у ведущего</p>
-        <Link to="/join" className="btn btn-primary mt-6">Ввести другой код</Link>
+        <h1 className="mt-3 text-xl font-bold">{tr('Игра не найдена')}</h1>
+        <p className="mt-1 text-muted">{tr('Проверьте код у ведущего')}</p>
+        <Link to="/join" className="btn btn-primary mt-6">{tr('Ввести другой код')}</Link>
       </Centered>
     )
   }
@@ -499,7 +524,7 @@ export default function Play() {
     return (
       <Centered>
         <Loader2 className="animate-spin text-green" size={32} />
-        <p className="mt-3 text-muted">Подключаемся к игре…</p>
+        <p className="mt-3 text-muted">{tr('Подключаемся к игре…')}</p>
       </Centered>
     )
   }
@@ -510,10 +535,10 @@ export default function Play() {
     return (
       <Centered>
         <div className="text-5xl">🚪</div>
-        <h1 className="mt-3 text-xl font-bold">Вы не в этой игре</h1>
-        <p className="mt-1 text-muted">Возможно, ведущий убрал вашу команду из списка.</p>
+        <h1 className="mt-3 text-xl font-bold">{tr('Вы не в этой игре')}</h1>
+        <p className="mt-1 text-muted">{tr('Возможно, ведущий убрал вашу команду из списка.')}</p>
         {data.status === 'lobby' && (
-          <button onClick={() => navigate(`/join/${upper}`)} className="btn btn-primary mt-6">Присоединиться снова</button>
+          <button onClick={() => navigate(`/join/${upper}`)} className="btn btn-primary mt-6">{tr('Присоединиться снова')}</button>
         )}
       </Centered>
     )
@@ -551,26 +576,26 @@ export default function Play() {
         <div className="min-w-0 flex-1">
           <div className="truncate text-xs text-muted">
             {me.name}
-            {me.is_captain && ' · капитан'}
-            {me.is_answerer && ' · отвечает'}
+            {me.is_captain && tr('· капитан')}
+            {me.is_answerer && tr('· отвечает')}
           </div>
           <TeamChip team={myTeam} />
         </div>
         <div className="text-right">
           <div className="text-xl font-extrabold leading-none tabular-nums">{myTeam.score}</div>
-          <div className="text-[10px] text-muted">{place} место</div>
+          <div className="text-[10px] text-muted">{place} {tr('место')}</div>
         </div>
-        <span title={error ? 'Нет связи' : 'Онлайн'} className={error ? 'text-red-400' : 'text-green'}>
+        <span title={error ? tr('Нет связи') : tr('Онлайн')} className={error ? 'text-red-400' : 'text-green'}>
           {error ? <WifiOff size={16} /> : <Wifi size={16} />}
         </span>
         {data.anticheat && !finished && (
           <span
             title={
               ac.disqualified
-                ? 'Вам бан'
+                ? tr('Вам бан')
                 : ac.warnings > 0
-                  ? `Нарушений: ${ac.warnings} из ${(data.warnings_allowed ?? 1) + 1}`
-                  : 'Защищённый режим включён'
+                  ? tr('Нарушений: {n} из {total}', { n: ac.warnings, total: (data.warnings_allowed ?? 1) + 1 })
+                  : tr('Защищённый режим включён')
             }
             className={ac.disqualified ? 'text-red-400' : ac.warnings > 0 ? 'text-yellow-400' : 'text-green'}
           >
@@ -591,10 +616,10 @@ export default function Play() {
             >
               <AlertTriangle size={20} className="mt-0.5 shrink-0 text-yellow-400" />
               <div className="min-w-0 flex-1 text-sm">
-                <div className="font-bold text-yellow-400">Предупреждение {ac.warnings} из {(data.warnings_allowed ?? 1) + 1}</div>
-                <div className="mt-0.5 text-muted">{ac.lastWarning}. Ещё одно нарушение — бан.</div>
+                <div className="font-bold text-yellow-400">{tr('Предупреждение')} {ac.warnings} {tr('из')} {(data.warnings_allowed ?? 1) + 1}</div>
+                <div className="mt-0.5 text-muted">{ac.lastWarning}{tr('. Ещё одно нарушение — бан.')}</div>
               </div>
-              <button onClick={ac.dismiss} className="shrink-0 rounded-lg p-1 text-muted hover:text-fg" aria-label="Скрыть">
+              <button onClick={ac.dismiss} className="shrink-0 rounded-lg p-1 text-muted hover:text-fg" aria-label={tr('Скрыть')}>
                 <X size={16} />
               </button>
             </motion.div>
@@ -613,28 +638,28 @@ export default function Play() {
           >
             <ShieldCheck size={20} className="shrink-0 text-yellow-400" />
             <div className="min-w-0 flex-1 text-sm">
-              <div className="font-bold text-yellow-400">Игра идёт не на весь экран</div>
-              <div className="mt-0.5 text-muted">Время на вопрос идёт — верните полный экран, не выходя из игры.</div>
+              <div className="font-bold text-yellow-400">{tr('Игра идёт не на весь экран')}</div>
+              <div className="mt-0.5 text-muted">{tr('Время на вопрос идёт — верните полный экран, не выходя из игры.')}</div>
             </div>
             <button onClick={ac.arm} className="btn btn-primary shrink-0 px-4 py-2 text-sm">
-              Во весь экран
+              {tr('Во весь экран')}
             </button>
           </motion.div>
         )}
 
         {!finished && ac.disqualified ? (
           <DqScreen
-            title="Вам бан"
+            title={tr('Вам бан')}
             reason={ac.dqReason}
-            note="Отвечать и выбирать вопросы вы больше не можете. Команда играет дальше, но если забанят ещё одного — бан получит вся команда. Если это ошибка, подойдите к ведущему: он отменит бан."
+            note={tr('Отвечать и выбирать вопросы вы больше не можете. Команда играет дальше, но если забанят ещё одного — бан получит вся команда. Если это ошибка, подойдите к ведущему: он отменит бан.')}
             teams={data.teams}
             meTeamId={myTeam.id}
           />
         ) : !finished && teamDq ? (
           <DqScreen
-            title="Команде бан"
+            title={tr('Команде бан')}
             reason={myTeam.dq_reason ?? ''}
-            note="Ответы больше не принимаются, баллы заморожены. Если это ошибка — подойдите к ведущему: он отменит бан."
+            note={tr('Ответы больше не принимаются, баллы заморожены. Если это ошибка — подойдите к ведущему: он отменит бан.')}
             teams={data.teams}
             meTeamId={myTeam.id}
           />
@@ -652,9 +677,9 @@ export default function Play() {
               {finished ? (
                 <div className="glass rounded-3xl p-6 text-center">
                   <Trophy className="mx-auto text-yellow-400" size={44} />
-                  <h1 className="mt-3 text-2xl font-extrabold">Игра окончена!</h1>
+                  <h1 className="mt-3 text-2xl font-extrabold">{tr('Игра окончена!')}</h1>
                   <p className="mt-1 text-muted">
-                    Ваша команда — <b className="text-fg">{place} место</b> с {myTeam.score} баллами
+                    {tr('Ваша команда —')} <b className="text-fg">{place} {tr('место')}</b> {tr('с')} {myTeam.score} {tr('баллами')}
                   </p>
                   <div className="mt-6 text-left">
                     <Standings teams={data.teams} meId={myTeam.id} />
@@ -664,7 +689,7 @@ export default function Play() {
                     onClick={() => localStorage.removeItem(playerTokenKey(upper))}
                     className="btn btn-ghost mt-6"
                   >
-                    <LogOut size={16} /> На главную
+                    <LogOut size={16} /> {tr('На главную')}
                   </Link>
                 </div>
               ) : inLobby ? (
@@ -672,52 +697,50 @@ export default function Play() {
                 <div className="glass rounded-3xl p-6">
                   <div className="text-center">
                     <CheckCircle2 size={48} className="mx-auto text-green" />
-                    <h1 className="mt-3 text-2xl font-extrabold">Вы в команде «{myTeam.name}»</h1>
+                    <h1 className="mt-3 text-2xl font-extrabold">{tr('Вы в команде «')}{myTeam.name}»</h1>
                     <p className="mt-1 text-muted">
                       {myTeam.ready
-                        ? 'Команда готова. Ждём остальных и старт от ведущего.'
+                        ? tr('Команда готова. Ждём остальных и старт от ведущего.')
                         : me.is_captain
-                          ? 'Назначьте, кто будет писать ответы, — и команда готова.'
-                          : 'Капитан выбирает, кто будет писать ответы.'}
+                          ? tr('Назначьте, кто будет писать ответы, — и команда готова.')
+                          : tr('Капитан выбирает, кто будет писать ответы.')}
                     </p>
                   </div>
 
                   <div className="mt-5">
                     <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted">
-                      <Users size={13} /> Состав
+                      <Users size={13} /> {tr('Состав')}
                     </div>
                     <Roster team={myTeam} meId={me.id} />
                   </div>
 
                   {me.is_captain && (
                     <div className="mt-5">
-                      <AnswererPicker code={upper} team={myTeam} meId={me.id} onDone={refresh} />
+                      <AnswererPicker code={upper} team={myTeam} meId={me.id} awaitFull onDone={refresh} />
                     </div>
                   )}
 
                   {myTeam.ready && (
                     <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-green/40 bg-green/10 p-3 text-sm font-bold text-green">
-                      <CheckCircle2 size={16} /> Команда готова
+                      <CheckCircle2 size={16} /> {tr('Команда готова')}
                     </div>
                   )}
 
                   {data.anticheat && (
                     <div className="mt-5 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-4 text-left text-sm">
                       <div className="flex items-center gap-2 font-bold text-yellow-400">
-                        <ShieldCheck size={16} /> Игра идёт в защищённом режиме
+                        <ShieldCheck size={16} /> {tr('Игра идёт в защищённом режиме')}
                       </div>
                       <p className="mt-1.5 text-muted">
-                        После старта игра развернётся на весь экран у каждого. Нельзя сворачивать её, переключаться
-                        на другие вкладки и приложения: первый раз — предупреждение, второй — бан. Забанят двоих
-                        из команды — бан всей команде. Отключите уведомления и не принимайте звонки.
+                        {tr('После старта игра развернётся на весь экран у каждого. Нельзя сворачивать её, переключаться на другие вкладки и приложения: первый раз — предупреждение, второй — бан. Забанят двоих из команды — бан всей команде. Отключите уведомления и не принимайте звонки.')}
                       </p>
                     </div>
                   )}
 
                   <div className="mt-5">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">
-                      Команды ({data.teams.length}
-                      {data.expected_teams ? ` из ${data.expected_teams}` : ''})
+                      {tr('Команды (')}{data.teams.length}
+                      {data.expected_teams ? ` ${tr('из {n}', { n: data.expected_teams })}` : ''})
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {data.teams.map((t) => (
@@ -750,8 +773,8 @@ export default function Play() {
                     <div className="min-w-0">
                       {state.category && <div className="text-xs font-semibold uppercase tracking-widest text-green">{state.category}</div>}
                       <div className="mt-1 text-sm text-muted">
-                        {state.number && state.total ? `Вопрос ${state.number} из ${state.total} · ` : ''}
-                        {q.points ? <b className="text-fg">{q.points} балл.</b> : null}
+                        {state.number && state.total ? `${tr('Вопрос {n} из {total}', { n: state.number, total: state.total })} · ` : ''}
+                        {q.points ? <b className="text-fg">{q.points} {tr('балл.')}</b> : null}
                       </div>
                     </div>
                     {timer && (
@@ -772,26 +795,26 @@ export default function Play() {
 
                   {state.reveal ? (
                     <div className="mt-5 rounded-2xl border border-green/40 bg-green/10 p-4 text-center">
-                      <div className="text-xs uppercase tracking-widest text-muted">Правильный ответ</div>
+                      <div className="text-xs uppercase tracking-widest text-muted">{tr('Правильный ответ')}</div>
                       <div className="mt-1 text-xl font-extrabold text-green">{state.reveal}</div>
-                      {data.my_answer && <div className="mt-2 text-sm text-muted">Ваш ответ: {data.my_answer}</div>}
+                      {data.my_answer && <div className="mt-2 text-sm text-muted">{tr('Ваш ответ:')} {data.my_answer}</div>}
                     </div>
                   ) : canAnswer ? (
                     <AnswerBox code={upper} questionId={q.id} current={data.my_answer} />
                   ) : answeringTeam && answeringTeam.id !== myTeam.id ? (
                     <div className="mt-5 rounded-2xl border border-line p-4 text-center text-muted">
-                      Отвечает команда <TeamChip team={answeringTeam} />
+                      {tr('Отвечает команда')} <TeamChip team={answeringTeam} />
                     </div>
                   ) : (
                     <div className="mt-5 rounded-2xl border border-line p-4 text-center text-muted">
-                      {data.my_answer ? `Ваш ответ принят: «${data.my_answer}». Ждём ведущего…` : 'Приём ответов закрыт'}
+                      {data.my_answer ? tr('Ваш ответ принят: «{answer}». Ждём ведущего…', { answer: data.my_answer }) : tr('Приём ответов закрыт')}
                     </div>
                   )}
                 </div>
               ) : state.view === 'review' && state.items ? (
                 <div className="glass rounded-3xl p-5">
-                  <h2 className="text-xl font-extrabold">Правильные ответы</h2>
-                  {state.category && <p className="text-sm text-muted">Категория «{state.category}»</p>}
+                  <h2 className="text-xl font-extrabold">{tr('Правильные ответы')}</h2>
+                  {state.category && <p className="text-sm text-muted">{tr('Категория «')}{state.category}»</p>}
                   <div className="mt-4 space-y-2.5">
                     {state.items.map((it, i) => {
                       const ok = it.correct.includes(myTeam.id)
@@ -819,7 +842,7 @@ export default function Play() {
               ) : (
                 <Centered inline>
                   <Loader2 className="animate-spin text-green" size={28} />
-                  <p className="mt-3 text-muted">Ведущий готовит следующий вопрос…</p>
+                  <p className="mt-3 text-muted">{tr('Ведущий готовит следующий вопрос…')}</p>
                 </Centered>
               )}
             </motion.div>
@@ -836,7 +859,7 @@ export default function Play() {
         {!finished && !inLobby && !ac.disqualified && !teamDq && (
           <section className="mt-6">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted">
-              <Crown size={14} /> Табло
+              <Crown size={14} /> {tr('Табло')}
             </div>
             <Standings teams={data.teams} meId={myTeam.id} />
           </section>

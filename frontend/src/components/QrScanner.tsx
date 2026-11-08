@@ -1,4 +1,5 @@
 import { CameraOff, Loader2 } from '../lib/icons'
+import { tr } from '../lib/i18n'
 import { useEffect, useRef, useState } from 'react'
 
 /**
@@ -77,14 +78,14 @@ export default function QrScanner({ onCode }: Props) {
 
     const start = async () => {
       if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-        setError('Камера доступна только на сайте по HTTPS. Введите код вручную.')
+        setError(tr('Камера доступна только на сайте по HTTPS. Введите код вручную.'))
         return
       }
       try {
         // Задняя камера — ею и наводят на доску
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       } catch {
-        setError('Нет доступа к камере. Разрешите её в настройках браузера или введите код вручную.')
+        setError(tr('Нет доступа к камере. Разрешите её в настройках браузера или введите код вручную.'))
         return
       }
       if (stopped) {
@@ -112,7 +113,7 @@ export default function QrScanner({ onCode }: Props) {
         try {
           jsQR = (await import('jsqr')).default
         } catch {
-          setError('Не удалось загрузить разбор QR-кода. Введите код вручную.')
+          setError(tr('Не удалось загрузить разбор QR-кода. Введите код вручную.'))
           return
         }
         if (stopped) return
@@ -168,12 +169,12 @@ export default function QrScanner({ onCode }: Props) {
 
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-white/80">
-          <Loader2 size={18} className="animate-spin" /> Включаем камеру…
+          <Loader2 size={18} className="animate-spin" /> {tr('Включаем камеру…')}
         </div>
       )}
       {ready && (
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-center text-xs text-white/90">
-          Наведите камеру на QR-код с доски ведущего
+          {tr('Наведите камеру на QR-код с доски ведущего')}
         </div>
       )}
     </div>

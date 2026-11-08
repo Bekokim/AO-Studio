@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { tr } from '../../lib/i18n'
 import { ArrowRight, Check, ChevronRight, Eye, Sparkles, Users } from '../../lib/icons'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -227,7 +228,7 @@ export default function Classic() {
   if (!cat) return <Navigate to="/game/results" replace />
 
   return (
-    <GameShell onFinish={end} hotkeys={[{ key: 'Space', label: 'далее' }, { key: 'P', label: 'пауза' }]}>
+    <GameShell onFinish={end} hotkeys={[{ key: 'Space', label: tr('далее') }, { key: 'P', label: tr('пауза') }]}>
       <div className="grid flex-1 gap-4 p-4 sm:p-6 lg:grid-cols-[1fr_340px]">
         {/* Левая часть — вопрос / разбор */}
         <section className="flex min-h-[60vh] flex-col">
@@ -258,7 +259,7 @@ export default function Classic() {
                   <div>
                     <div className="text-sm font-semibold uppercase tracking-widest text-green">{cat.name}</div>
                     <div className="mt-1 text-muted">
-                      Вопрос {qIdx + 1} из {cat.questions.length} · <b className="text-fg">{q.points}</b> балл.
+                      {tr('Вопрос')} {qIdx + 1} {tr('из')} {cat.questions.length} · <b className="text-fg">{q.points}</b> {tr('балл.')}
                     </div>
                   </div>
                   <CircularTimer
@@ -284,7 +285,7 @@ export default function Classic() {
                         animate={{ opacity: 1, scale: 1 }}
                         className="rounded-2xl border border-green/40 bg-green/10 px-6 py-4"
                       >
-                        <div className="text-xs uppercase tracking-widest text-muted">Правильный ответ</div>
+                        <div className="text-xs uppercase tracking-widest text-muted">{tr('Правильный ответ')}</div>
                         <div className="mt-1 text-2xl font-extrabold text-green sm:text-3xl">{q.answer}</div>
                       </motion.div>
                     )}
@@ -294,24 +295,24 @@ export default function Classic() {
                 <div className="host-only mt-8 flex items-center justify-end gap-4">
                   {online && (
                     <span className="flex items-center gap-1.5 text-sm text-muted">
-                      <Users size={16} /> Ответили: <b className="text-fg">{answeredNow}</b> из {teams.length}
+                      <Users size={16} /> {tr('Ответили:')} <b className="text-fg">{answeredNow}</b> {tr('из')} {teams.length}
                     </span>
                   )}
                   <span className="text-sm text-muted">
                     {phase === 'reveal'
                       ? isLastQ
-                        ? 'Дальше — разбор категории'
-                        : 'Следующий вопрос выйдет сам'
-                      : 'Когда время выйдет — ответ и баллы появятся сами'}
+                        ? tr('Дальше — разбор категории')
+                        : tr('Следующий вопрос выйдет сам')
+                      : tr('Когда время выйдет — ответ и баллы появятся сами')}
                   </span>
                   <button onClick={next} className="btn btn-primary px-6 py-3">
                     {isLastQ ? (
                       <>
-                        <Eye size={18} /> К разбору категории
+                        <Eye size={18} /> {tr('К разбору категории')}
                       </>
                     ) : (
                       <>
-                        {phase === 'reveal' ? 'Дальше' : 'Следующий вопрос'} <ArrowRight size={18} />
+                        {phase === 'reveal' ? tr('Дальше') : tr('Следующий вопрос')} <ArrowRight size={18} />
                       </>
                     )}
                   </button>
@@ -325,14 +326,14 @@ export default function Classic() {
                 exit={{ opacity: 0, y: -30 }}
                 className="glass flex flex-1 flex-col rounded-3xl p-5 sm:p-8"
               >
-                <h2 className="text-2xl font-extrabold sm:text-3xl">Правильные ответы</h2>
+                <h2 className="text-2xl font-extrabold sm:text-3xl">{tr('Правильные ответы')}</h2>
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-muted">
-                    Категория «{cat.name}». <span className="host-only">Отметьте команды, ответившие верно.</span>
+                    {tr('Категория «')}{cat.name}». <span className="host-only">{tr('Отметьте команды, ответившие верно.')}</span>
                   </p>
                   {online && (
-                    <button onClick={markMatches} className="host-only btn btn-ghost px-3 py-2 text-sm" title="Отметить ответы, совпавшие с правильным">
-                      <Sparkles size={16} /> Отметить совпавшие
+                    <button onClick={markMatches} className="host-only btn btn-ghost px-3 py-2 text-sm" title={tr('Отметить ответы, совпавшие с правильным')}>
+                      <Sparkles size={16} /> {tr('Отметить совпавшие')}
                     </button>
                   )}
                 </div>
@@ -352,7 +353,7 @@ export default function Classic() {
                           <p className="text-muted">{cq.text}</p>
                           <p className="mt-1 text-lg font-bold text-green">→ {cq.answer}</p>
                         </div>
-                        <span className="shrink-0 rounded-lg bg-fg/5 px-2 py-1 text-xs font-bold">{cq.points} б.</span>
+                        <span className="shrink-0 rounded-lg bg-fg/5 px-2 py-1 text-xs font-bold">{cq.points} {tr('б.')}</span>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 pl-10">
                         {teams.map((t) => {
@@ -367,7 +368,7 @@ export default function Classic() {
                                 on ? 'text-white' : 'border-line text-muted hover:text-fg'
                               }`}
                               style={on ? { background: t.color, borderColor: t.color } : undefined}
-                              title={a ? `Ответ: ${a.text}` : undefined}
+                              title={a ? tr('Ответ: {text}', { text: a.text }) : undefined}
                             >
                               {on ? <Check size={14} strokeWidth={3} /> : <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color }} />}
                               {t.name}
@@ -397,7 +398,7 @@ export default function Classic() {
                                   className={`input py-1.5 text-sm ${
                                     entry?.result === true ? 'border-green!' : entry?.result === false ? 'invalid' : ''
                                   }`}
-                                  placeholder={`Ответ «${t.name}» + Enter`}
+                                  placeholder={tr('Ответ «{team}» + Enter', { team: t.name })}
                                   value={entry?.text ?? ''}
                                   onChange={(e) => setTyped((m) => ({ ...m, [key]: { text: e.target.value } }))}
                                   autoComplete="off"
@@ -413,9 +414,9 @@ export default function Classic() {
 
                 <div className="host-only mt-6 flex justify-end">
                   <button onClick={next} className="btn btn-primary px-6 py-3">
-                    {isLastCat ? 'Завершить игру' : (
+                    {isLastCat ? tr('Завершить игру') : (
                       <>
-                        Следующая категория <ChevronRight size={18} />
+                        {tr('Следующая категория')} <ChevronRight size={18} />
                       </>
                     )}
                   </button>
@@ -427,7 +428,7 @@ export default function Classic() {
 
         {/* Правая часть — табло */}
         <aside className="glass h-fit rounded-3xl p-4 lg:sticky lg:top-4">
-          <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-widest text-muted">Табло</h3>
+          <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-widest text-muted">{tr('Табло')}</h3>
           <Scoreboard teams={teams} onAdjust={addScore} />
         </aside>
       </div>

@@ -1,4 +1,5 @@
 import FormatIcon from '../components/FormatIcon'
+import { tr } from '../lib/i18n'
 import { motion } from 'framer-motion'
 import { Loader2, Monitor, QrCode, Search, ShieldCheck, Users } from '../lib/icons'
 import { useEffect, useState } from 'react'
@@ -56,23 +57,22 @@ export default function Board() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="flex items-center gap-3 text-3xl font-extrabold sm:text-4xl">
-                <Monitor className="shrink-0 text-green" size={34} /> Доска
+                <Monitor className="shrink-0 text-green" size={34} /> {tr('Доска')}
               </h1>
               <p className="mt-2 max-w-xl text-muted">
-                Проведите игру на экране или проекторе: выберите игру, задайте состав и время — на доске появятся
-                код и QR-код, команды подключатся со своих телефонов.
+                {tr('Проведите игру на экране или проекторе: выберите игру, задайте состав и время — на доске появятся код и QR-код, команды подключатся со своих телефонов.')}
               </p>
             </div>
             <button onClick={() => launch()} className="btn btn-primary shrink-0 px-5 py-3">
-              <Monitor size={18} /> Запустить на доске
+              <Monitor size={18} /> {tr('Запустить на доске')}
             </button>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {[
-              { icon: QrCode, title: 'Код и QR', text: 'Команды сканируют код — аккаунт им не нужен' },
-              { icon: Users, title: 'Состав заранее', text: 'Сколько команд и игроков ждём, когда начинать' },
-              { icon: ShieldCheck, title: 'Защита', text: 'Уход с экрана телефона — предупреждение и дисквалификация' },
+              { icon: QrCode, title: tr('Код и QR'), text: tr('Команды сканируют код — аккаунт им не нужен') },
+              { icon: Users, title: tr('Состав заранее'), text: tr('Сколько команд и игроков ждём, когда начинать') },
+              { icon: ShieldCheck, title: tr('Защита'), text: tr('Уход с экрана телефона — предупреждение и дисквалификация') },
             ].map((f) => (
               <div key={f.title} className="rounded-2xl border border-line bg-fg/[0.03] p-4">
                 <f.icon size={20} className="text-green" />
@@ -90,14 +90,14 @@ export default function Board() {
             <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
             <input
               className="input pl-11"
-              placeholder="Найти игру для доски"
+              placeholder={tr('Найти игру для доски')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
             <button onClick={() => setFmt('')} className={`chip ${fmt === '' ? 'active' : ''}`}>
-              Все
+              {tr('Все')}
             </button>
             {(Object.keys(FORMATS) as GameFormat[]).map((f) => (
               <button key={f} onClick={() => setFmt(f)} className={`chip ${fmt === f ? 'active' : ''}`}>
@@ -114,8 +114,8 @@ export default function Board() {
         ) : rooms.length === 0 ? (
           <div className="glass mt-6 rounded-3xl p-10 text-center">
             <div className="text-5xl">🔍</div>
-            <p className="mt-3 font-bold">Игр не нашлось</p>
-            <p className="mt-1 text-sm text-muted">Измените поиск или создайте свою игру в разделе «Создать АО».</p>
+            <p className="mt-3 font-bold">{tr('Игр не нашлось')}</p>
+            <p className="mt-1 text-sm text-muted">{tr('Измените поиск или создайте свою игру в разделе «Создать АО».')}</p>
           </div>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

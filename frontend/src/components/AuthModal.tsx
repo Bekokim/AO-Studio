@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { tr } from '../lib/i18n'
 import { Eye, EyeOff, Loader2 } from '../lib/icons'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -44,7 +45,7 @@ function Field({
             tabIndex={-1}
             onClick={() => setShow((s) => !s)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-fg"
-            aria-label={show ? 'Скрыть пароль' : 'Показать пароль'}
+            aria-label={show ? tr('Скрыть пароль') : tr('Показать пароль')}
           >
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -82,19 +83,20 @@ function passwordScore(pw: string): number {
   return Math.min(score, 4)
 }
 
-const STRENGTH = [
-  { label: 'Слишком простой', color: 'bg-red-400', text: 'text-red-400' },
-  { label: 'Слабый', color: 'bg-orange-400', text: 'text-orange-400' },
-  { label: 'Средний', color: 'bg-yellow-400', text: 'text-yellow-400' },
-  { label: 'Хороший', color: 'bg-lime-400', text: 'text-lime-500' },
-  { label: 'Надёжный', color: 'bg-green', text: 'text-green' },
+// Функция, а не константа: на уровне модуля tr() не переживёт смену языка
+const strength = () => [
+  { label: tr('Слишком простой'), color: 'bg-red-400', text: 'text-red-400' },
+  { label: tr('Слабый'), color: 'bg-orange-400', text: 'text-orange-400' },
+  { label: tr('Средний'), color: 'bg-yellow-400', text: 'text-yellow-400' },
+  { label: tr('Хороший'), color: 'bg-lime-400', text: 'text-lime-500' },
+  { label: tr('Надёжный'), color: 'bg-green', text: 'text-green' },
 ]
 
 /** Полоска надёжности пароля под полем ввода */
 function PasswordStrength({ value }: { value: string }) {
   if (!value) return null
   const score = passwordScore(value)
-  const s = STRENGTH[score]
+  const s = strength()[score]
   return (
     <div className="-mt-1">
       <div className="flex gap-1.5">
@@ -109,7 +111,7 @@ function PasswordStrength({ value }: { value: string }) {
       </div>
       <div className={`mt-1.5 flex items-center justify-between text-xs ${s.text}`}>
         <span>{s.label}</span>
-        {value.length < 8 && <span className="text-muted">нужно минимум 8 символов</span>}
+        {value.length < 8 && <span className="text-muted">{tr('нужно минимум 8 символов')}</span>}
       </div>
     </div>
   )
@@ -139,17 +141,17 @@ export default function AuthModal() {
   const validate = (): Errors => {
     const e: Errors = {}
     if (mode === 'login') {
-      if (!form.login.trim()) e.login = 'Введите логин или email'
-      if (!form.password) e.password = 'Введите пароль'
+      if (!form.login.trim()) e.login = tr('Введите логин или email')
+      if (!form.password) e.password = tr('Введите пароль')
       return e
     }
-    if (!form.username.trim()) e.username = 'Введите логин'
-    else if (!/^[\w.@+-]{3,150}$/.test(form.username)) e.username = 'От 3 символов: буквы, цифры и @ . + - _'
-    if (!form.email.trim()) e.email = 'Введите email'
-    else if (!EMAIL_RE.test(form.email)) e.email = 'Некорректный email'
-    if (!form.password) e.password = 'Введите пароль'
-    else if (form.password.length < 8) e.password = 'Минимум 8 символов'
-    if (form.password_confirm !== form.password) e.password_confirm = 'Пароли не совпадают'
+    if (!form.username.trim()) e.username = tr('Введите логин')
+    else if (!/^[\w.@+-]{3,150}$/.test(form.username)) e.username = tr('От 3 символов: буквы, цифры и @ . + - _')
+    if (!form.email.trim()) e.email = tr('Введите email')
+    else if (!EMAIL_RE.test(form.email)) e.email = tr('Некорректный email')
+    if (!form.password) e.password = tr('Введите пароль')
+    else if (form.password.length < 8) e.password = tr('Минимум 8 символов')
+    if (form.password_confirm !== form.password) e.password_confirm = tr('Пароли не совпадают')
     return e
   }
 
@@ -195,7 +197,7 @@ export default function AuthModal() {
       if (after) after()
       else if (created) navigate('/profile')
     } catch (err) {
-      setGeneral(errorMessage(err, 'Не удалось войти через Google.'))
+      setGeneral(errorMessage(err, tr('Не удалось войти через Google.')))
     } finally {
       setLoading(false)
     }
@@ -205,9 +207,9 @@ export default function AuthModal() {
     <Modal open={!!authModal} onClose={closeAuth} size="sm" hideClose={false}>
       <div className="mb-6 flex flex-col items-center text-center">
         <Logo size={52} />
-        <h2 className="mt-4 text-2xl font-extrabold">{mode === 'login' ? 'С возвращением!' : 'Создайте аккаунт'}</h2>
+        <h2 className="mt-4 text-2xl font-extrabold">{mode === 'login' ? tr('С возвращением!') : tr('Создайте аккаунт')}</h2>
         <p className="mt-1 text-sm text-muted">
-          {mode === 'login' ? 'Войдите, чтобы продолжить' : 'Чтобы создавать и проводить игры Акыл Ордо'}
+          {mode === 'login' ? tr('Войдите, чтобы продолжить') : tr('Чтобы создавать и проводить игры Акыл Ордо')}
         </p>
       </div>
 
@@ -221,7 +223,7 @@ export default function AuthModal() {
             {mode === m && (
               <motion.span layoutId="auth-tab" className="absolute inset-0 rounded-lg bg-gradient-to-br from-green to-green-dark" />
             )}
-            <span className="relative">{m === 'register' ? 'Регистрация' : 'Вход'}</span>
+            <span className="relative">{m === 'register' ? tr('Регистрация') : tr('Вход')}</span>
           </button>
         ))}
       </div>
@@ -229,16 +231,16 @@ export default function AuthModal() {
       <form onSubmit={submit} className="space-y-4" noValidate>
         {mode === 'login' ? (
           <>
-            <Field label="Логин или Email" name="login" value={form.login} onChange={set('login')} error={errors.login} autoComplete="username" autoFocus />
-            <Field label="Пароль" name="password" type="password" value={form.password} onChange={set('password')} error={errors.password} autoComplete="current-password" />
+            <Field label={tr('Логин или Email')} name="login" value={form.login} onChange={set('login')} error={errors.login} autoComplete="username" autoFocus />
+            <Field label={tr('Пароль')} name="password" type="password" value={form.password} onChange={set('password')} error={errors.password} autoComplete="current-password" />
           </>
         ) : (
           <>
-            <Field label="Логин" name="username" value={form.username} onChange={set('username')} error={errors.username} autoComplete="username" autoFocus />
+            <Field label={tr('Логин')} name="username" value={form.username} onChange={set('username')} error={errors.username} autoComplete="username" autoFocus />
             <Field label="Email" name="email" type="email" value={form.email} onChange={set('email')} error={errors.email} autoComplete="email" />
-            <Field label="Пароль" name="password" type="password" value={form.password} onChange={set('password')} error={errors.password} autoComplete="new-password" />
+            <Field label={tr('Пароль')} name="password" type="password" value={form.password} onChange={set('password')} error={errors.password} autoComplete="new-password" />
             <PasswordStrength value={form.password} />
-            <Field label="Подтверждение пароля" name="password_confirm" type="password" value={form.password_confirm} onChange={set('password_confirm')} error={errors.password_confirm} autoComplete="new-password" />
+            <Field label={tr('Подтверждение пароля')} name="password_confirm" type="password" value={form.password_confirm} onChange={set('password_confirm')} error={errors.password_confirm} autoComplete="new-password" />
           </>
         )}
 
@@ -246,7 +248,7 @@ export default function AuthModal() {
 
         <button type="submit" disabled={loading} className="btn btn-primary w-full py-3">
           {loading && <Loader2 size={18} className="animate-spin" />}
-          {mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
+          {mode === 'login' ? tr('Войти') : tr('Зарегистрироваться')}
         </button>
       </form>
 

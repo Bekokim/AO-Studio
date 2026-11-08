@@ -1,3 +1,4 @@
+import { tr } from '../lib/i18n'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { API_BASE, api } from '../lib/api'
 import type { ViolationKind } from '../lib/types'
@@ -54,13 +55,14 @@ interface Options {
   server?: { warnings: number; disqualified: boolean; dq_reason: string } | null
 }
 
-const LABELS: Record<ViolationKind, string> = {
-  hidden: 'Вы свернули игру или переключились на другое приложение',
-  blur: 'Окно игры потеряло фокус',
-  fullscreen: 'Вы вышли из полноэкранного режима',
-  left: 'Вы покинули страницу игры',
-  lost: 'Устройство пропало со связи',
-}
+// Функция, а не константа: tr() на уровне модуля замёрз бы на языке загрузки
+const labels = (): Record<ViolationKind, string> => ({
+  hidden: tr('Вы свернули игру или переключились на другое приложение'),
+  blur: tr('Окно игры потеряло фокус'),
+  fullscreen: tr('Вы вышли из полноэкранного режима'),
+  left: tr('Вы покинули страницу игры'),
+  lost: tr('Устройство пропало со связи'),
+})
 
 export function useAnticheat({ code, enabled, active, server }: Options): Anticheat {
   const [armed, setArmed] = useState(false)
@@ -111,7 +113,7 @@ export function useAnticheat({ code, enabled, active, server }: Options): Antich
         setDisqualified(data.disqualified)
         setDqReason(data.dq_reason)
         // При дисквалификации баннер предупреждения не нужен — его заменяет экран «вне зачёта»
-        setLastWarning(data.disqualified ? null : LABELS[kind])
+        setLastWarning(data.disqualified ? null : labels()[kind])
       } catch {
         /* следующее нарушение сообщим снова */
       }

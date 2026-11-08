@@ -1,32 +1,53 @@
+import { tr } from './i18n'
 import type { ComponentType } from 'react'
 
 import { BookOpen, Dice, LayoutGrid, type IconProps } from './icons'
 import type { GameFormat } from './types'
 
+/**
+ * Описания форматов. Тексты заданы геттерами: обычное поле посчиталось бы один раз
+ * при загрузке модуля и после смены языка осталось бы на прежнем. Геттер читается
+ * как обычное поле (`FORMATS[f].label`), но берёт перевод в момент отрисовки.
+ */
 export const FORMATS: Record<
   GameFormat,
   { label: string; icon: ComponentType<IconProps>; short: string; description: string }
 > = {
   classic: {
-    label: 'Классический',
+    get label() {
+      return tr('Классический')
+    },
     icon: BookOpen,
-    short: 'Классич.',
-    description:
-      'Вопросы разложены по категориям, каждый стоит 1 балл. Играют по категориям: открывают вопросы нужной темы.',
+    get short() {
+      return tr('Классич.')
+    },
+    get description() {
+      return tr('Вопросы разложены по категориям, каждый стоит 1 балл. Играют по категориям: открывают вопросы нужной темы.')
+    },
   },
   random: {
-    label: 'Рандом',
+    get label() {
+      return tr('Рандом')
+    },
     icon: Dice,
-    short: 'Рандом',
-    description:
-      'Без категорий: вопросы идут вперемешку, каждый стоит 1 балл. Карточки открываются вслепую.',
+    get short() {
+      return tr('Рандом')
+    },
+    get description() {
+      return tr('Без категорий: вопросы идут вперемешку, каждый стоит 1 балл. Карточки открываются вслепую.')
+    },
   },
   strategic: {
-    label: 'Стратегический',
+    get label() {
+      return tr('Стратегический')
+    },
     icon: LayoutGrid,
-    short: 'Стратег.',
-    description:
-      'Категории и цена вопроса от 1 до 5 баллов — как в «Своей игре». Команды по очереди выбирают клетку.',
+    get short() {
+      return tr('Стратег.')
+    },
+    get description() {
+      return tr('Категории и цена вопроса от 1 до 5 баллов — как в «Своей игре». Команды по очереди выбирают клетку.')
+    },
   },
 }
 

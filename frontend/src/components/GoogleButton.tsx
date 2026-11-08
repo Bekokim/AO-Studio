@@ -1,3 +1,4 @@
+import { tr } from '../lib/i18n'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
 
@@ -25,7 +26,7 @@ function loadScript(): Promise<void> {
     s.onload = () => resolve()
     s.onerror = () => {
       scriptPromise = null
-      reject(new Error('Не удалось загрузить Google'))
+      reject(new Error(tr('Не удалось загрузить Google')))
     }
     document.head.appendChild(s)
   })
@@ -127,10 +128,10 @@ export default function GoogleButton({ mode, onCredential }: Props) {
   return (
     <div>
       <div className="my-4 flex items-center gap-3 text-xs text-muted">
-        <div className="h-px flex-1 bg-line" /> или <div className="h-px flex-1 bg-line" />
+        <div className="h-px flex-1 bg-line" /> {tr('или')} <div className="h-px flex-1 bg-line" />
       </div>
       {failed ? (
-        <p className="text-center text-xs text-muted">Не удалось загрузить вход через Google. Проверьте интернет.</p>
+        <p className="text-center text-xs text-muted">{tr('Не удалось загрузить вход через Google. Проверьте интернет.')}</p>
       ) : (
         <div className="relative h-11 w-full">
           {/* Видимая кнопка в оформлении сайта */}
@@ -138,7 +139,7 @@ export default function GoogleButton({ mode, onCredential }: Props) {
             aria-hidden
             className="btn btn-ghost pointer-events-none absolute inset-0 w-full justify-center gap-2.5 py-0 text-sm font-semibold"
           >
-            <GoogleG /> {mode === 'register' ? 'Зарегистрироваться через Google' : 'Войти через Google'}
+            <GoogleG /> {mode === 'register' ? tr('Зарегистрироваться через Google') : tr('Войти через Google')}
           </div>
           {/* Настоящая кнопка Google — прозрачная, ровно поверх нашей */}
           <div

@@ -1,4 +1,5 @@
 import { Loader2 } from './lib/icons'
+import { tr } from './lib/i18n'
 import { useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import AuthModal from './components/AuthModal'
@@ -52,6 +53,7 @@ const isAdminPath = (path: string) => /\/admin\/?$/.test(path)
 export default function App() {
   const init = useAuth((s) => s.init)
   const clear = useAuth((s) => s.clear)
+  const lang = useUI((s) => s.lang)
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -75,13 +77,15 @@ export default function App() {
   if (isAdminPath(pathname)) {
     return (
       <div className="flex min-h-screen items-center justify-center gap-3 text-muted">
-        <Loader2 className="animate-spin" /> Открываем админку…
+        <Loader2 className="animate-spin" /> {tr('Открываем админку…')}
       </div>
     )
   }
 
   return (
-    <>
+    // Ключ по языку: смена языка пересобирает дерево страниц целиком. Так строки
+    // берутся из нового словаря без подписки на язык в каждом компоненте
+    <div key={lang} className="contents">
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
@@ -108,6 +112,6 @@ export default function App() {
       <AuthModal />
       <StartGameModal />
       <BoardStartModal />
-    </>
+    </div>
   )
 }

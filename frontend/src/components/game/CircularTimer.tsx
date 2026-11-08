@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { tr } from '../../lib/i18n'
 import { Pause, Play, RotateCcw } from '../../lib/icons'
 
 interface Props {
@@ -53,18 +54,18 @@ export default function CircularTimer({ left, total, exact, size = 140, running,
           <span className="font-extrabold tabular-nums" style={{ fontSize: size * 0.3, color: left === 0 ? '#EF4444' : undefined }}>
             {left}
           </span>
-          {left === 0 && <span className="text-xs font-bold uppercase text-red-500">Время!</span>}
+          {left === 0 && <span className="text-xs font-bold uppercase text-red-500">{tr('Время!')}</span>}
         </div>
       </motion.div>
       {showControls && (onToggle || onReset) && (
         <div className="flex gap-1">
           {onToggle && (
-            <button onClick={onToggle} className="rounded-lg p-2 text-muted hover:bg-fg/10 hover:text-fg" aria-label={running ? 'Пауза' : 'Старт'}>
+            <button onClick={onToggle} className="rounded-lg p-2 text-muted hover:bg-fg/10 hover:text-fg" aria-label={running ? tr('Пауза') : tr('Старт')}>
               {running ? <Pause size={16} /> : <Play size={16} />}
             </button>
           )}
           {onReset && (
-            <button onClick={onReset} className="rounded-lg p-2 text-muted hover:bg-fg/10 hover:text-fg" aria-label="Сбросить таймер">
+            <button onClick={onReset} className="rounded-lg p-2 text-muted hover:bg-fg/10 hover:text-fg" aria-label={tr('Сбросить таймер')}>
               <RotateCcw size={16} />
             </button>
           )}

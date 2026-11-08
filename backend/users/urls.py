@@ -12,5 +12,6 @@ urlpatterns = [
     path("me/", views.MeView.as_view()),
     path("me/update/", views.MeUpdateView.as_view()),
     path("me/delete/", views.MeDeleteView.as_view()),
+    path("me/activity/", views.MeActivityView.as_view()),
     path("token/refresh/", TokenRefreshView.as_view()),
 ]

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { tr } from '../lib/i18n'
 import { Bookmark, BookmarkCheck, FolderOpen, Globe, HelpCircle, Lock, Play } from '../lib/icons'
 import { useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -75,36 +76,46 @@ export default function RoomCard({ room, onClick, onPlay, onSaveChange, showPriv
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-2">
           <h3 className="line-clamp-2 text-lg font-bold leading-snug">{room.title}</h3>
-          {showPrivacy && (
-            <span className="shrink-0 text-muted" title={room.is_public ? 'Публичная' : 'Приватная'}>
-              {room.is_public ? <Globe size={16} /> : <Lock size={16} />}
-            </span>
-          )}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {/* Своя копия чужой игры: кнопки «сохранить» на ней нет, поэтому её происхождение
+                показываем значком — иначе в профиле копия ничем не отличается от своей комнаты */}
+            {room.saved_from && (
+              <span className="text-green" title={tr('Сохранённая копия')}>
+                <BookmarkCheck size={16} />
+              </span>
+            )}
+            {showPrivacy && (
+              <span className="text-muted" title={room.is_public ? tr('Публичная') : tr('Приватная')}>
+                {room.is_public ? <Globe size={16} /> : <Lock size={16} />}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
           <FormatBadge format={room.format} />
           {room.format !== 'random' && (
             <span className="inline-flex items-center gap-1">
-              <FolderOpen size={14} /> {cats.length} кат.
+              <FolderOpen size={14} /> {cats.length} {tr('кат.')}
             </span>
           )}
         </div>
 
         {room.saved_from && (
-          <p className="line-clamp-1 text-xs text-muted">
-            Сохранено из игры <span className="text-fg/70">@{room.saved_from.author.username}</span>
+          <p className="line-clamp-1 inline-flex items-center gap-1.5 text-xs text-muted">
+            <Bookmark size={13} className="shrink-0" />
+            {tr('Сохранено из игры')} <span className="text-fg/70">@{room.saved_from.author.username}</span>
           </p>
         )}
 
         {cats.length > 0 && (
           <p className="line-clamp-1 text-sm text-muted">
-            <span className="text-fg/70">Категории:</span> {cats.join(', ')}
+            <span className="text-fg/70">{tr('Категории:')}</span> {cats.join(', ')}
           </p>
         )}
 
         <p className="inline-flex items-center gap-1.5 text-sm text-muted">
-          <HelpCircle size={15} /> Вопросов: <span className="font-semibold text-fg">{room.questions_count}</span>
+          <HelpCircle size={15} /> {tr('Вопросов:')} <span className="font-semibold text-fg">{room.questions_count}</span>
         </p>
       </div>
 
@@ -123,8 +134,8 @@ export default function RoomCard({ room, onClick, onPlay, onSaveChange, showPriv
               onClick={onSave}
               disabled={busy}
               className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition hover:bg-fg/5 ${saved ? 'text-green' : 'text-muted'}`}
-              title={saved ? 'Открыть мою копию' : 'Сохранить себе копию — её можно править'}
-              aria-label={saved ? 'Открыть мою копию' : 'Сохранить себе'}
+              title={saved ? tr('Открыть мою копию') : tr('Сохранить себе копию — её можно править')}
+              aria-label={saved ? tr('Открыть мою копию') : tr('Сохранить себе')}
             >
               <motion.span animate={pop ? { scale: [1, 1.4, 1] } : {}} transition={{ duration: 0.35 }} className="flex">
                 {saved ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
@@ -140,7 +151,7 @@ export default function RoomCard({ room, onClick, onPlay, onSaveChange, showPriv
               }}
               className="btn btn-primary px-3 py-1.5 text-sm"
             >
-              <Play size={14} fill="currentColor" /> Играть
+              <Play size={14} fill="currentColor" /> {tr('Играть')}
             </button>
           )}
         </div>

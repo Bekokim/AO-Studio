@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getLang, setLang as applyLang, type Lang } from '../lib/i18n'
 import type { RoomListItem } from '../lib/types'
 
 type Theme = 'dark' | 'light'
@@ -19,6 +20,10 @@ function applyTheme(t: Theme) {
 interface UIState {
   theme: Theme
   toggleTheme: () => void
+
+  /** Язык интерфейса. Смену ловит App — он пересобирает дерево страниц */
+  lang: Lang
+  setLang: (lang: Lang) => void
 
   authModal: null | 'login' | 'register'
   /** Действие, которое выполнится после успешной авторизации */
@@ -52,6 +57,12 @@ export const useUI = create<UIState>((set, get) => ({
       /* ignore */
     }
     set({ theme: t })
+  },
+
+  lang: getLang(),
+  setLang(lang) {
+    applyLang(lang)
+    set({ lang })
   },
 
   authModal: null,

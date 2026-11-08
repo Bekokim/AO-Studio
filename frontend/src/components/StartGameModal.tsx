@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { tr } from '../lib/i18n'
 import { ArrowLeft, Loader2, Rocket, Search } from '../lib/icons'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -76,7 +77,7 @@ export default function StartGameModal() {
         api.post<GameSession>('/game/start/', {
           room_id: room.id,
           mode: 'solo',
-          teams: [{ name: name.trim() || (user?.username ?? 'Игрок'), color: '#10B981' }],
+          teams: [{ name: name.trim() || (user?.username ?? tr('Игрок')), color: '#10B981' }],
         }),
       ])
       startGame(session.id, detail, session.teams, 'solo', null, false)
@@ -87,7 +88,7 @@ export default function StartGameModal() {
       closeStart()
       navigate('/game/solo')
     } catch (err) {
-      setError(errorMessage(err, 'Не удалось начать игру.'))
+      setError(errorMessage(err, tr('Не удалось начать игру.')))
     } finally {
       setStarting(false)
     }
@@ -101,11 +102,11 @@ export default function StartGameModal() {
       title={
         <div className="flex items-center gap-3">
           {step === 2 && !startRoom && (
-            <button onClick={() => setStep(1)} className="rounded-full p-1.5 text-muted hover:bg-fg/10 hover:text-fg" aria-label="Назад">
+            <button onClick={() => setStep(1)} className="rounded-full p-1.5 text-muted hover:bg-fg/10 hover:text-fg" aria-label={tr('Назад')}>
               <ArrowLeft size={18} />
             </button>
           )}
-          <span>{step === 1 ? 'Выберите игру' : 'Одиночная игра'}</span>
+          <span>{step === 1 ? tr('Выберите игру') : tr('Одиночная игра')}</span>
         </div>
       }
     >
@@ -122,7 +123,7 @@ export default function StartGameModal() {
               <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 className="input pl-10"
-                placeholder="Поиск комнаты по названию…"
+                placeholder={tr('Поиск комнаты по названию…')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 autoFocus
@@ -134,7 +135,7 @@ export default function StartGameModal() {
                   <Loader2 className="animate-spin" />
                 </div>
               ) : rooms.length === 0 ? (
-                <div className="py-10 text-center text-muted">Комнаты не найдены</div>
+                <div className="py-10 text-center text-muted">{tr('Комнаты не найдены')}</div>
               ) : (
                 rooms.map((r) => (
                   <button
@@ -148,7 +149,7 @@ export default function StartGameModal() {
                     <div className="min-w-0">
                       <div className="truncate font-semibold">{r.title}</div>
                       <div className="mt-1 text-xs text-muted">
-                        @{r.author.username} · {r.questions_count} {plural(r.questions_count, 'вопрос', 'вопроса', 'вопросов')}
+                        @{r.author.username} · {r.questions_count} {plural(r.questions_count, tr('вопрос'), tr('вопроса'), tr('вопросов'))}
                       </div>
                     </div>
                     <FormatBadge format={r.format} compact />
@@ -162,7 +163,7 @@ export default function StartGameModal() {
             {room && (
               <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-green/30 bg-green/10 p-4">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-widest text-muted">Играем</div>
+                  <div className="text-xs uppercase tracking-widest text-muted">{tr('Играем')}</div>
                   <div className="truncate font-bold">{room.title}</div>
                 </div>
                 <FormatBadge format={room.format} compact />
@@ -170,10 +171,10 @@ export default function StartGameModal() {
             )}
 
             <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-muted">Ваше имя</span>
+              <span className="mb-1.5 block text-sm font-medium text-muted">{tr('Ваше имя')}</span>
               <input
                 className="input py-3.5 text-lg"
-                placeholder="Как вас записать в итогах"
+                placeholder={tr('Как вас записать в итогах')}
                 value={name}
                 maxLength={100}
                 onChange={(e) => setName(e.target.value)}
@@ -183,17 +184,16 @@ export default function StartGameModal() {
             </label>
 
             <div className="mt-4 rounded-xl border border-dashed border-line p-4 text-sm text-muted">
-              Вы проходите игру в одиночку: открываете любой вопрос, вводите ответ — сайт <b className="text-fg">сразу
-              проверяет</b> его и начисляет баллы. В конце — итог и работа над ошибками.
+              {tr('Вы проходите игру в одиночку: открываете любой вопрос, вводите ответ — сайт')} <b className="text-fg">{tr('сразу проверяет')}</b> {tr('его и начисляет баллы. В конце — итог и работа над ошибками.')}
               <div className="mt-2">
-                Собрать команды и сыграть с ведущим можно в разделе <b className="text-fg">«Доска»</b>.
+                {tr('Собрать команды и сыграть с ведущим можно в разделе')} <b className="text-fg">{tr('«Доска»')}</b>.
               </div>
             </div>
 
             {error && <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">{error}</div>}
 
             <button onClick={begin} disabled={starting} className="btn btn-primary mt-5 w-full py-3.5 text-base">
-              {starting ? <Loader2 size={20} className="animate-spin" /> : <Rocket size={20} />} Играть
+              {starting ? <Loader2 size={20} className="animate-spin" /> : <Rocket size={20} />} {tr('Играть')}
             </button>
           </motion.div>
         )}
